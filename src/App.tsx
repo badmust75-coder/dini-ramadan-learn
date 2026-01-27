@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Sourates from "./pages/Sourates";
+import Nourania from "./pages/Nourania";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -39,7 +40,7 @@ const AppRoutes = () => {
       <Route path="/ramadan" element={<ProtectedRoute><Index /></ProtectedRoute>} />
       <Route path="/alphabet" element={<ProtectedRoute><Index /></ProtectedRoute>} />
       <Route path="/invocations" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-      <Route path="/nourania" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+      <Route path="/nourania" element={<ProtectedRoute><Nourania /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
