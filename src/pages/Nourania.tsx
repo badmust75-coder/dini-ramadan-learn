@@ -9,25 +9,26 @@ import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-// Page ranges for each lesson in the PDF (approximated from the document structure)
+// Page ranges for each lesson in the PDF (based on actual 34-page document)
+// Pages 1-4 are intro, lessons start from page 5
 const LESSON_PAGE_RANGES: Record<number, { start: number; end: number }> = {
-  1: { start: 1, end: 20 },
-  2: { start: 21, end: 40 },
-  3: { start: 41, end: 60 },
-  4: { start: 61, end: 80 },
-  5: { start: 81, end: 100 },
-  6: { start: 101, end: 120 },
-  7: { start: 121, end: 140 },
-  8: { start: 141, end: 160 },
-  9: { start: 161, end: 180 },
-  10: { start: 181, end: 200 },
-  11: { start: 201, end: 220 },
-  12: { start: 221, end: 240 },
-  13: { start: 241, end: 260 },
-  14: { start: 261, end: 280 },
-  15: { start: 281, end: 300 },
-  16: { start: 301, end: 315 },
-  17: { start: 316, end: 328 },
+  1: { start: 5, end: 6 },    // Lettres isolées
+  2: { start: 7, end: 8 },    // Lettres composées
+  3: { start: 9, end: 10 },   // Lettres disjointes
+  4: { start: 11, end: 12 },  // Lettres avec voyelles
+  5: { start: 13, end: 14 },  // Le Tanwin
+  6: { start: 15, end: 15 },  // Exercices sur le Tanwin
+  7: { start: 16, end: 16 },  // Le petit Alif
+  8: { start: 17, end: 17 },  // Applications
+  9: { start: 18, end: 19 },  // L'allongement (Madd)
+  10: { start: 20, end: 21 }, // Le Soukoun
+  11: { start: 22, end: 23 }, // La Chadda
+  12: { start: 24, end: 25 }, // Chadda et Tanwin
+  13: { start: 26, end: 27 }, // Lam solaire et lunaire
+  14: { start: 28, end: 28 }, // Applications
+  15: { start: 29, end: 30 }, // Règles du Tajwid
+  16: { start: 31, end: 32 }, // Révision complète
+  17: { start: 33, end: 34 }, // Examen final
 };
 
 const Nourania = () => {
