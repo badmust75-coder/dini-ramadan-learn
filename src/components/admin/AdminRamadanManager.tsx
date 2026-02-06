@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Upload, Video, HelpCircle, Plus, Trash2, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Upload, Video, HelpCircle, Plus, Trash2, Save, Loader2, Rocket } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -40,6 +40,19 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
   const [quizQuestion, setQuizQuestion] = useState('');
   const [quizOptions, setQuizOptions] = useState(['', '', '', '']);
   const [correctOption, setCorrectOption] = useState<number>(0);
+
+  // Fetch ramadan settings (start_enabled)
+  const { data: settings } = useQuery({
+    queryKey: ['ramadan-settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ramadan_settings')
+        .select('*')
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
 
   // Fetch ramadan days
   const { data: days = [] } = useQuery({
@@ -177,6 +190,33 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
     },
   });
 
+  // Toggle start enabled mutation
+  const toggleStartMutation = useMutation({
+    mutationFn: async () => {
+      const newValue = !settings?.start_enabled;
+      const { error } = await supabase
+        .from('ramadan_settings')
+        .update({ 
+          start_enabled: newValue, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', settings?.id);
+      if (error) throw error;
+      return newValue;
+    },
+    onSuccess: (newValue) => {
+      queryClient.invalidateQueries({ queryKey: ['ramadan-settings'] });
+      toast({ 
+        title: newValue 
+          ? '🚀 Top départ activé ! Les élèves peuvent commencer.' 
+          : 'Top départ désactivé'
+      });
+    },
+    onError: () => {
+      toast({ title: 'Erreur lors de la mise à jour', variant: 'destructive' });
+    },
+  });
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && selectedDay) {
@@ -220,11 +260,49 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Retour
         </Button>
-        <div>
+        <div className="flex-1">
           <h2 className="text-xl font-bold text-foreground">Gestion Ramadan</h2>
           <p className="text-sm text-muted-foreground">Téléverser vidéos et créer quiz</p>
         </div>
       </div>
+
+      {/* Top Départ Button */}
+      <Card className={settings?.start_enabled ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : ''}>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`p-3 rounded-xl ${settings?.start_enabled ? 'bg-green-500' : 'bg-muted'}`}>
+                <Rocket className={`h-6 w-6 ${settings?.start_enabled ? 'text-white' : 'text-muted-foreground'}`} />
+              </div>
+              <div>
+                <p className="font-bold text-foreground">Top Départ</p>
+                <p className="text-sm text-muted-foreground">
+                  {settings?.start_enabled 
+                    ? 'Les élèves peuvent accéder au Jour 1' 
+                    : 'Le calendrier est verrouillé pour les élèves'}
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => toggleStartMutation.mutate()}
+              disabled={toggleStartMutation.isPending}
+              variant={settings?.start_enabled ? 'destructive' : 'default'}
+              className={!settings?.start_enabled ? 'bg-gradient-to-r from-green-500 to-green-600' : ''}
+            >
+              {toggleStartMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : settings?.start_enabled ? (
+                'Désactiver'
+              ) : (
+                <>
+                  <Rocket className="h-4 w-4 mr-2" />
+                  Lancer !
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Days Grid */}
       <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-10 gap-2">

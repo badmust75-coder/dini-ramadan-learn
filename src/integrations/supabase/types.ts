@@ -398,6 +398,27 @@ export type Database = {
           },
         ]
       }
+      ramadan_settings: {
+        Row: {
+          id: string
+          start_enabled: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          start_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          start_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       sourates: {
         Row: {
           audio_url: string | null

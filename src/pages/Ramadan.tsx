@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Check, Play, HelpCircle, Moon, Star, Lock, ChevronRight } from 'lucide-react';
+import { Check, Play, HelpCircle, Moon, Star, Lock, ChevronRight, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import AppLayout from '@/components/layout/AppLayout';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useConfetti } from '@/hooks/useConfetti';
+import UnlockConfirmDialog from '@/components/ramadan/UnlockConfirmDialog';
 
 interface RamadanDay {
   id: number;
@@ -45,6 +46,29 @@ const Ramadan = () => {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
+  const [pendingDayToOpen, setPendingDayToOpen] = useState<RamadanDay | null>(null);
+  const [currentHour, setCurrentHour] = useState(new Date().getHours());
+
+  // Update current hour every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentHour(new Date().getHours());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch ramadan settings
+  const { data: settings } = useQuery({
+    queryKey: ['ramadan-settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ramadan_settings')
+        .select('*')
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
 
   // Fetch all days
   const { data: days = [] } = useQuery({
@@ -101,17 +125,38 @@ const Ramadan = () => {
     return quizzes.find(q => q.day_id === dayId);
   };
 
+  // Check if it's after 16h (4 PM)
+  const isAfter16h = currentHour >= 16;
+
   // Check if a day is unlocked
   const isDayUnlocked = (dayNumber: number) => {
-    // Day 1 is always unlocked
-    if (dayNumber === 1) return true;
+    // Day 1 requires admin to enable start
+    if (dayNumber === 1) {
+      return settings?.start_enabled === true;
+    }
     
-    // Find the previous day and check if its quiz is completed
+    // For other days: previous quiz must be completed AND it must be after 16h
     const previousDay = days.find(d => d.day_number === dayNumber - 1);
     if (!previousDay) return false;
     
     const previousProgress = getDayProgress(previousDay.id);
-    return previousProgress?.quiz_completed === true;
+    const previousQuizCompleted = previousProgress?.quiz_completed === true;
+    
+    // Must have completed previous quiz AND be after 16h
+    return previousQuizCompleted && isAfter16h;
+  };
+
+  // Check if day can potentially unlock (quiz done but waiting for 16h)
+  const isWaitingFor16h = (dayNumber: number) => {
+    if (dayNumber === 1) return false;
+    
+    const previousDay = days.find(d => d.day_number === dayNumber - 1);
+    if (!previousDay) return false;
+    
+    const previousProgress = getDayProgress(previousDay.id);
+    const previousQuizCompleted = previousProgress?.quiz_completed === true;
+    
+    return previousQuizCompleted && !isAfter16h;
   };
 
   // Check if a day has content (video and quiz)
@@ -153,6 +198,19 @@ const Ramadan = () => {
   const handleDayClick = (day: RamadanDay) => {
     const isUnlocked = isDayUnlocked(day.day_number);
     const hasContent = dayHasContent(day);
+    const waitingFor16h = isWaitingFor16h(day.day_number);
+    
+    // Day 1 not enabled by admin
+    if (day.day_number === 1 && !settings?.start_enabled) {
+      toast.error('Le calendrier n\'est pas encore ouvert. Patience !');
+      return;
+    }
+    
+    // Waiting for 16h
+    if (waitingFor16h) {
+      toast.info('Ce jour sera disponible à partir de 16h. Bsaha ftourek ! 🌙');
+      return;
+    }
     
     if (!isUnlocked) {
       toast.error('Complétez d\'abord le quiz du jour précédent');
@@ -164,11 +222,28 @@ const Ramadan = () => {
       return;
     }
     
+    // For days after day 1, show confirmation dialog
+    if (day.day_number > 1 && expandedDay !== day.id) {
+      setPendingDayToOpen(day);
+      return;
+    }
+    
+    openDay(day);
+  };
+
+  const openDay = (day: RamadanDay) => {
     setExpandedDay(expandedDay === day.id ? null : day.id);
     setActiveTab('video');
     setSelectedAnswer(null);
     setShowResult(false);
     setIsCorrect(false);
+  };
+
+  const handleConfirmOpen = () => {
+    if (pendingDayToOpen) {
+      openDay(pendingDayToOpen);
+      setPendingDayToOpen(null);
+    }
   };
 
   const handleSubmitQuiz = (quiz: Quiz, dayId: number) => {
@@ -226,6 +301,9 @@ const Ramadan = () => {
             const isUnlocked = isDayUnlocked(day.day_number);
             const hasContent = dayHasContent(day);
 
+            const waitingFor16h = isWaitingFor16h(day.day_number);
+            const notStarted = day.day_number === 1 && !settings?.start_enabled;
+
             return (
               <button
                 key={day.id}
@@ -234,7 +312,9 @@ const Ramadan = () => {
                   'aspect-square rounded-xl flex flex-col items-center justify-center text-sm font-bold transition-all duration-200 relative',
                   isCompleted
                     ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-md'
-                    : !isUnlocked
+                    : waitingFor16h
+                    ? 'bg-gradient-to-br from-orange-400 to-orange-500 text-white cursor-wait'
+                    : notStarted || !isUnlocked
                     ? 'bg-muted/50 text-muted-foreground cursor-not-allowed'
                     : !hasContent
                     ? 'bg-muted/30 text-muted-foreground/50'
@@ -245,7 +325,9 @@ const Ramadan = () => {
               >
                 {isCompleted ? (
                   <Check className="h-4 w-4" />
-                ) : !isUnlocked ? (
+                ) : waitingFor16h ? (
+                  <Clock className="h-4 w-4" />
+                ) : notStarted || !isUnlocked ? (
                   <Lock className="h-4 w-4" />
                 ) : (
                   <span>{day.day_number}</span>
@@ -260,6 +342,12 @@ const Ramadan = () => {
           <div className="flex items-center gap-1">
             <div className="w-4 h-4 rounded bg-gradient-to-br from-green-500 to-green-600" />
             <span>Complété</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-4 rounded bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center">
+              <Clock className="h-2 w-2 text-white" />
+            </div>
+            <span>Dispo à 16h</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-4 h-4 rounded bg-muted flex items-center justify-center">
@@ -447,6 +535,13 @@ const Ramadan = () => {
             })()}
           </div>
         )}
+        {/* Unlock Confirmation Dialog */}
+        <UnlockConfirmDialog
+          open={!!pendingDayToOpen}
+          onOpenChange={(open) => !open && setPendingDayToOpen(null)}
+          onConfirm={handleConfirmOpen}
+          dayNumber={pendingDayToOpen?.day_number || 0}
+        />
       </div>
     </AppLayout>
   );
