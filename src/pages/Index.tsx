@@ -100,77 +100,74 @@ const Index = () => {
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
           {modules.map((module, index) => {
             const Icon = module.icon;
+            const isNourania = module.id === 'nourania';
             return (
-              <button
-                key={module.id}
-                onClick={() => navigate(module.path)}
-                className={cn(
-                  'module-card relative overflow-hidden rounded-2xl p-4 text-left',
-                  'flex flex-col items-center justify-center min-h-[160px]',
-                  'animate-slide-up',
-                  `stagger-${index + 1}`
-                )}
-                style={{ animationFillMode: 'both' }}
-              >
-                {/* Background gradient overlay */}
-                <div
+              <div key={module.id} className="flex flex-col items-center">
+                <button
+                  onClick={() => navigate(module.path)}
                   className={cn(
-                    'absolute inset-0 opacity-10 bg-gradient-to-br',
-                    module.gradient
+                    'module-card relative overflow-hidden rounded-2xl p-4 text-left w-full',
+                    'flex flex-col items-center justify-center min-h-[160px]',
+                    'animate-slide-up',
+                    `stagger-${index + 1}`
                   )}
-                />
+                  style={{ animationFillMode: 'both' }}
+                >
+                  {/* Background gradient overlay */}
+                  <div
+                    className={cn(
+                      'absolute inset-0 opacity-10 bg-gradient-to-br',
+                      module.gradient
+                    )}
+                  />
 
-                {/* Icon */}
-                <div className="relative z-10 mb-3">
-                  <div className={cn(
-                    'w-14 h-14 rounded-2xl flex items-center justify-center',
-                    'bg-gradient-to-br shadow-lg',
-                    module.gradient
-                  )}>
-                    <Icon className={cn('h-7 w-7', module.iconColor)} />
+                  {/* Icon */}
+                  <div className="relative z-10 mb-3">
+                    <div className={cn(
+                      'w-14 h-14 rounded-2xl flex items-center justify-center',
+                      'bg-gradient-to-br shadow-lg',
+                      module.gradient
+                    )}>
+                      <Icon className={cn('h-7 w-7', module.iconColor)} />
+                    </div>
                   </div>
-                </div>
 
-                {/* Text */}
-                <div className="relative z-10 text-center">
-                  <p className="font-arabic text-lg text-muted-foreground mb-1">
-                    {module.titleArabic}
-                  </p>
-                  <h3 className="font-bold text-foreground text-lg">
-                    {module.title}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {module.description}
-                  </p>
-                </div>
+                  {/* Text */}
+                  <div className="relative z-10 text-center">
+                    <p className="font-arabic text-lg text-muted-foreground mb-1">
+                      {module.titleArabic}
+                    </p>
+                    <h3 className="font-bold text-foreground text-lg">
+                      {module.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {module.description}
+                    </p>
+                  </div>
 
-                {/* Decorative corner */}
-                <div className="absolute top-0 right-0 w-16 h-16 opacity-5">
-                  <div className={cn(
-                    'absolute inset-0 bg-gradient-to-br rounded-bl-full',
-                    module.gradient
-                  )} />
-                </div>
-              </button>
+                  {/* Decorative corner */}
+                  <div className="absolute top-0 right-0 w-16 h-16 opacity-5">
+                    <div className={cn(
+                      'absolute inset-0 bg-gradient-to-br rounded-bl-full',
+                      module.gradient
+                    )} />
+                  </div>
+                </button>
+
+                {/* Discreet Admin Shield Icon - Only under Nourania card */}
+                {isNourania && isAdmin && (
+                  <button
+                    onClick={() => navigate('/admin')}
+                    className="mt-2 p-2 rounded-full hover:bg-muted/50 transition-all duration-300 opacity-40 hover:opacity-100"
+                    title="Administration"
+                  >
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>
-
-        {/* Admin Access Card */}
-        {isAdmin && (
-          <button
-            onClick={() => navigate('/admin')}
-            className="w-full module-card rounded-2xl p-4 flex items-center gap-4 animate-fade-in border-gold/30"
-          >
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center shadow-gold">
-              <Shield className="h-6 w-6 text-primary" />
-            </div>
-            <div className="text-left">
-              <h3 className="font-bold text-foreground">Panneau Administration</h3>
-              <p className="text-sm text-muted-foreground">Gérer le contenu et les élèves</p>
-            </div>
-          </button>
-        )}
 
         {/* Quick Stats */}
         <div className="bg-card rounded-2xl p-4 shadow-card border border-border animate-fade-in">
