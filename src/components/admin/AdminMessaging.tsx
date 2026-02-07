@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,10 +18,6 @@ interface UserMessage {
   created_at: string;
   sender_type: string;
   conversation_id: string | null;
-  profile?: {
-    full_name: string | null;
-    email: string | null;
-  };
 }
 
 interface Conversation {
@@ -36,7 +32,7 @@ interface Conversation {
   unreadCount: number;
 }
 
-const AdminMessaging = () => {
+const AdminMessaging = React.forwardRef<HTMLDivElement>((_, ref) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -44,8 +40,8 @@ const AdminMessaging = () => {
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Fetch all conversations
-  const { data: conversations = [], isLoading } = useQuery({
+  // Fetch all conversations (admin RLS gives access to all messages)
+  const { data: conversations = [], isLoading, refetch } = useQuery({
     queryKey: ['admin-conversations'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -53,13 +49,16 @@ const AdminMessaging = () => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching conversations:', error);
+        return [];
+      }
 
-      // Group by conversation/user
+      // Group by user (conversation_id == user_id for our schema)
       const conversationMap = new Map<string, UserMessage[]>();
-      
+
       for (const msg of data) {
-        const key = msg.conversation_id || msg.user_id;
+        const key = msg.user_id;
         if (!conversationMap.has(key)) {
           conversationMap.set(key, []);
         }
@@ -68,23 +67,20 @@ const AdminMessaging = () => {
 
       // Build conversation list with profiles
       const conversationList: Conversation[] = [];
-      
-      for (const [key, messages] of conversationMap) {
-        const userMessage = messages.find(m => m.sender_type === 'user');
-        if (!userMessage) continue;
 
+      for (const [userId, messages] of conversationMap) {
         const { data: profile } = await supabase
           .from('profiles')
           .select('full_name, email')
-          .eq('user_id', userMessage.user_id)
+          .eq('user_id', userId)
           .single();
 
         const unreadCount = messages.filter(m => m.sender_type === 'user' && !m.is_read).length;
         const lastMsg = messages[0];
 
         conversationList.push({
-          user_id: userMessage.user_id,
-          conversation_id: userMessage.conversation_id || key,
+          user_id: userId,
+          conversation_id: userId,
           profile: profile || { full_name: null, email: null },
           lastMessage: lastMsg.message,
           lastMessageDate: lastMsg.created_at,
@@ -97,18 +93,21 @@ const AdminMessaging = () => {
   });
 
   // Fetch messages for selected conversation
-  const { data: conversationMessages = [] } = useQuery({
-    queryKey: ['conversation-messages', selectedConversation?.conversation_id],
+  const { data: conversationMessages = [], refetch: refetchMessages } = useQuery({
+    queryKey: ['conversation-messages', selectedConversation?.user_id],
     queryFn: async () => {
       if (!selectedConversation) return [];
 
       const { data, error } = await supabase
         .from('user_messages')
         .select('*')
-        .eq('conversation_id', selectedConversation.conversation_id)
+        .eq('user_id', selectedConversation.user_id)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching conversation messages:', error);
+        return [];
+      }
       return data as UserMessage[];
     },
     enabled: !!selectedConversation,
@@ -130,12 +129,12 @@ const AdminMessaging = () => {
               .eq('id', msg.id)
           )
         ).then(() => {
-          queryClient.invalidateQueries({ queryKey: ['admin-conversations'] });
+          refetch();
           queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
         });
       }
     }
-  }, [selectedConversation, conversationMessages, queryClient]);
+  }, [selectedConversation, conversationMessages, refetch, queryClient]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -156,11 +155,9 @@ const AdminMessaging = () => {
           table: 'user_messages',
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['admin-conversations'] });
+          refetch();
           if (selectedConversation) {
-            queryClient.invalidateQueries({ 
-              queryKey: ['conversation-messages', selectedConversation.conversation_id] 
-            });
+            refetchMessages();
           }
         }
       )
@@ -169,7 +166,7 @@ const AdminMessaging = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient, selectedConversation]);
+  }, [refetch, refetchMessages, selectedConversation]);
 
   const handleSendReply = async () => {
     if (!replyMessage.trim() || !selectedConversation) return;
@@ -182,7 +179,6 @@ const AdminMessaging = () => {
           user_id: selectedConversation.user_id,
           message: replyMessage.trim(),
           sender_type: 'admin',
-          conversation_id: selectedConversation.conversation_id,
         });
 
       if (error) throw error;
@@ -193,7 +189,7 @@ const AdminMessaging = () => {
       });
 
       setReplyMessage('');
-      queryClient.invalidateQueries({ queryKey: ['conversation-messages', selectedConversation.conversation_id] });
+      refetchMessages();
     } catch (error) {
       console.error('Error sending reply:', error);
       toast({
@@ -208,7 +204,7 @@ const AdminMessaging = () => {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4" ref={ref}>
         {[1, 2, 3].map((i) => (
           <Card key={i} className="animate-pulse">
             <CardContent className="h-20 bg-muted/50" />
@@ -221,11 +217,11 @@ const AdminMessaging = () => {
   // Conversation detail view
   if (selectedConversation) {
     return (
-      <div className="space-y-4 h-[600px] flex flex-col">
+      <div className="space-y-4 h-[600px] flex flex-col" ref={ref}>
         {/* Header */}
         <div className="flex items-center gap-3">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             onClick={() => setSelectedConversation(null)}
           >
@@ -265,8 +261,8 @@ const AdminMessaging = () => {
                 >
                   <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
                   <p className={`text-xs mt-1 ${
-                    msg.sender_type === 'admin' 
-                      ? 'text-primary-foreground/70' 
+                    msg.sender_type === 'admin'
+                      ? 'text-primary-foreground/70'
                       : 'text-muted-foreground'
                   }`}>
                     {format(new Date(msg.created_at), 'dd MMM à HH:mm', { locale: fr })}
@@ -301,7 +297,7 @@ const AdminMessaging = () => {
 
   // Conversations list view
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" ref={ref}>
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
           <Mail className="h-5 w-5" />
@@ -325,10 +321,10 @@ const AdminMessaging = () => {
         ) : (
           conversations.map((conv) => (
             <Card
-              key={conv.conversation_id}
+              key={conv.user_id}
               className={`cursor-pointer transition-all hover:shadow-md ${
-                conv.unreadCount > 0 
-                  ? 'border-orange-500 bg-orange-500/10' 
+                conv.unreadCount > 0
+                  ? 'border-orange-500 bg-orange-500/10'
                   : 'border-emerald-500/30 bg-emerald-500/5'
               }`}
               onClick={() => setSelectedConversation(conv)}
@@ -371,6 +367,8 @@ const AdminMessaging = () => {
       </div>
     </div>
   );
-};
+});
+
+AdminMessaging.displayName = 'AdminMessaging';
 
 export default AdminMessaging;

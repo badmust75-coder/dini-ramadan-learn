@@ -13,37 +13,38 @@ export const useUnreadMessages = () => {
     queryFn: async () => {
       if (!user) return 0;
 
-      if (isAdmin) {
-        // Admin: count unread user messages
-        const { count, error } = await supabase
-          .from('user_messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('sender_type', 'user')
-          .eq('is_read', false);
+      try {
+        if (isAdmin) {
+          // Admin: count unread user messages across all conversations
+          const { count, error } = await supabase
+            .from('user_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('sender_type', 'user')
+            .eq('is_read', false);
 
-        if (error) throw error;
-        return count || 0;
-      } else {
-        // User: count unread admin messages in their conversations
-        const { data: userConversations } = await supabase
-          .from('user_messages')
-          .select('conversation_id')
-          .eq('user_id', user.id)
-          .not('conversation_id', 'is', null);
+          if (error) {
+            console.error('Error fetching admin unread count:', error);
+            return 0;
+          }
+          return count || 0;
+        } else {
+          // User: count unread admin messages in their own conversation
+          const { count, error } = await supabase
+            .from('user_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('sender_type', 'admin')
+            .eq('is_read', false);
 
-        if (!userConversations || userConversations.length === 0) return 0;
-
-        const conversationIds = [...new Set(userConversations.map(c => c.conversation_id))];
-
-        const { count, error } = await supabase
-          .from('user_messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('sender_type', 'admin')
-          .eq('is_read', false)
-          .in('conversation_id', conversationIds);
-
-        if (error) throw error;
-        return count || 0;
+          if (error) {
+            console.error('Error fetching user unread count:', error);
+            return 0;
+          }
+          return count || 0;
+        }
+      } catch (err) {
+        console.error('Error in unread count query:', err);
+        return 0;
       }
     },
     enabled: !!user,
@@ -65,10 +66,10 @@ export const useUnreadMessages = () => {
         },
         (payload) => {
           const newMessage = payload.new as { sender_type: string; user_id: string };
-          
+
           // Trigger badge animation on new message
-          if ((isAdmin && newMessage.sender_type === 'user') || 
-              (!isAdmin && newMessage.sender_type === 'admin')) {
+          if ((isAdmin && newMessage.sender_type === 'user') ||
+              (!isAdmin && newMessage.sender_type === 'admin' && newMessage.user_id === user.id)) {
             setHasNewMessage(true);
             queryClient.invalidateQueries({ queryKey: ['unread-messages-count', user.id, isAdmin] });
           }
