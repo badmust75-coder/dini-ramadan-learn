@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,7 +47,6 @@ const NewMessageNotification = ({ onOpenMessages }: NewMessageNotificationProps)
             created_at: string;
             sender_type: string;
             user_id: string;
-            conversation_id: string;
           };
 
           // For admin: show notification for user messages
@@ -65,23 +65,13 @@ const NewMessageNotification = ({ onOpenMessages }: NewMessageNotificationProps)
               created_at: newMessage.created_at,
               sender_name: profile?.full_name || profile?.email || 'Élève',
             });
-          } else if (!isAdmin && newMessage.sender_type === 'admin') {
-            // Check if this message is for the current user's conversation
-            const { data: userMessages } = await supabase
-              .from('user_messages')
-              .select('conversation_id')
-              .eq('user_id', user.id)
-              .eq('conversation_id', newMessage.conversation_id)
-              .limit(1);
-
-            if (userMessages && userMessages.length > 0) {
-              setPendingNotification({
-                id: newMessage.id,
-                message: newMessage.message,
-                created_at: newMessage.created_at,
-                sender_name: 'Administrateur',
-              });
-            }
+          } else if (!isAdmin && newMessage.sender_type === 'admin' && newMessage.user_id === user.id) {
+            setPendingNotification({
+              id: newMessage.id,
+              message: newMessage.message,
+              created_at: newMessage.created_at,
+              sender_name: 'Administrateur',
+            });
           }
         }
       )
@@ -105,7 +95,7 @@ const NewMessageNotification = ({ onOpenMessages }: NewMessageNotificationProps)
 
   return (
     <Dialog open={!!pendingNotification} onOpenChange={() => {}}>
-      <DialogContent 
+      <DialogContent
         className="sm:max-w-md h-[70vh] flex flex-col"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
@@ -115,6 +105,9 @@ const NewMessageNotification = ({ onOpenMessages }: NewMessageNotificationProps)
             <Mail className="h-6 w-6 animate-bounce" />
             Nouveau message !
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Un nouveau message est arrivé
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 flex flex-col items-center justify-center space-y-6">

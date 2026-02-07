@@ -1,3 +1,4 @@
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Moon, BookOpen, Hand, BookMarked, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,12 +18,12 @@ const navItems: NavItem[] = [
   { icon: BookOpen, label: 'Alphabet', path: '/alphabet', color: 'text-gold' },
 ];
 
-const BottomNav = () => {
+const BottomNav = React.forwardRef<HTMLElement>((_, ref) => {
   const navigate = useNavigate();
   const location = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bottom-nav safe-bottom">
+    <nav ref={ref} className="fixed bottom-0 left-0 right-0 z-50 bottom-nav safe-bottom">
       <div className="flex items-center justify-around h-16 px-2">
         {navItems.map((item) => {
           const isActive = location.pathname.startsWith(item.path);
@@ -68,6 +69,8 @@ const BottomNav = () => {
       </div>
     </nav>
   );
-};
+});
+
+BottomNav.displayName = 'BottomNav';
 
 export default BottomNav;

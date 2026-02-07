@@ -7,11 +7,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -42,18 +43,21 @@ const MessagingDialog = ({ open, onOpenChange, onMessagesRead }: MessagingDialog
   const recognitionRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Fetch conversation messages
-  const { data: messages = [] } = useQuery({
+  // Fetch conversation messages (user_id based – RLS guarantees user sees only their own)
+  const { data: messages = [], refetch } = useQuery({
     queryKey: ['user-messages', user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
         .from('user_messages')
         .select('*')
-        .or(`user_id.eq.${user.id},and(sender_type.eq.admin,conversation_id.in.(select conversation_id from user_messages where user_id = ${user.id}))`)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching messages:', error);
+        return [];
+      }
       return data as Message[];
     },
     enabled: !!user && open,
@@ -65,7 +69,7 @@ const MessagingDialog = ({ open, onOpenChange, onMessagesRead }: MessagingDialog
       const unreadAdminMessages = messages.filter(
         m => m.sender_type === 'admin' && !m.is_read
       );
-      
+
       if (unreadAdminMessages.length > 0) {
         Promise.all(
           unreadAdminMessages.map(msg =>
@@ -95,9 +99,10 @@ const MessagingDialog = ({ open, onOpenChange, onMessagesRead }: MessagingDialog
           event: '*',
           schema: 'public',
           table: 'user_messages',
+          filter: `user_id=eq.${user.id}`,
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['user-messages', user.id] });
+          refetch();
         }
       )
       .subscribe();
@@ -105,7 +110,7 @@ const MessagingDialog = ({ open, onOpenChange, onMessagesRead }: MessagingDialog
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, queryClient]);
+  }, [user, refetch]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -172,18 +177,12 @@ const MessagingDialog = ({ open, onOpenChange, onMessagesRead }: MessagingDialog
 
     setIsSubmitting(true);
     try {
-      // Get or create conversation ID
-      const conversationId = messages.length > 0 && messages[0].conversation_id
-        ? messages[0].conversation_id
-        : crypto.randomUUID();
-
       const { error } = await supabase
         .from('user_messages')
         .insert({
           user_id: user.id,
           message: message.trim(),
           sender_type: 'user',
-          conversation_id: conversationId,
         });
 
       if (error) throw error;
@@ -194,7 +193,7 @@ const MessagingDialog = ({ open, onOpenChange, onMessagesRead }: MessagingDialog
       });
 
       setMessage('');
-      queryClient.invalidateQueries({ queryKey: ['user-messages', user.id] });
+      refetch();
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -224,6 +223,9 @@ const MessagingDialog = ({ open, onOpenChange, onMessagesRead }: MessagingDialog
             <Mail className="h-5 w-5" />
             Messagerie
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Envoyez un message à l'administrateur
+          </DialogDescription>
         </DialogHeader>
 
         {/* Messages List */}
