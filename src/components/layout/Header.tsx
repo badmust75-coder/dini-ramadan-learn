@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Home, LogOut } from 'lucide-react';
+import { Home, LogOut, Mail } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import VoiceNoteDialog from '@/components/notes/VoiceNoteDialog';
-import noteIcon from '@/assets/note-icon.png';
+import MessagingDialog from '@/components/messaging/MessagingDialog';
+import NewMessageNotification from '@/components/messaging/NewMessageNotification';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 
 interface HeaderProps {
   title?: string;
@@ -19,11 +21,17 @@ const Header = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { signOut, isAdmin } = useAuth();
-  const [showNoteDialog, setShowNoteDialog] = useState(false);
+  const [showMessaging, setShowMessaging] = useState(false);
+  const { unreadCount, hasNewMessage, clearNewMessageFlag } = useUnreadMessages();
 
   const handleLogout = async () => {
     await signOut();
     navigate('/auth');
+  };
+
+  const handleOpenMessaging = () => {
+    clearNewMessageFlag();
+    setShowMessaging(true);
   };
 
   const isHome = location.pathname === '/';
@@ -32,18 +40,26 @@ const Header = ({
     <>
       <header className="sticky top-0 z-50 w-full bg-gradient-to-r from-primary via-primary to-royal-dark shadow-royal safe-top">
         <div className="flex items-center justify-between h-14 px-4">
-          {/* Left: Note Icon */}
+          {/* Left: Envelope Icon with Badge */}
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={() => setShowNoteDialog(true)} 
-            className="text-primary-foreground hover:bg-primary-foreground/10"
+            onClick={handleOpenMessaging} 
+            className="text-primary-foreground hover:bg-primary-foreground/10 relative"
           >
-            <img 
-              src={noteIcon} 
-              alt="Note" 
-              className="h-8 w-8 object-contain invert"
-            />
+            <Mail className="h-6 w-6" />
+            {unreadCount > 0 && (
+              <Badge 
+                className={`absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-orange-500 border-2 border-primary ${
+                  hasNewMessage ? 'animate-pulse' : ''
+                }`}
+                style={{
+                  animation: hasNewMessage ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : undefined
+                }}
+              >
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </Badge>
+            )}
           </Button>
 
           {/* Center: Title with logo */}
@@ -54,7 +70,6 @@ const Header = ({
             <h1 className="text-lg font-bold text-primary-foreground">
               {title}
             </h1>
-            {isAdmin}
           </div>
 
           {/* Right: Home or Logout */}
@@ -94,7 +109,13 @@ const Header = ({
         </div>
       </header>
 
-      <VoiceNoteDialog open={showNoteDialog} onOpenChange={setShowNoteDialog} />
+      <MessagingDialog 
+        open={showMessaging} 
+        onOpenChange={setShowMessaging}
+        onMessagesRead={clearNewMessageFlag}
+      />
+      
+      <NewMessageNotification onOpenMessages={handleOpenMessaging} />
     </>
   );
 };

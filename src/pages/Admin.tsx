@@ -9,7 +9,7 @@ import AdminModuleProgress from '@/components/admin/AdminModuleProgress';
 import AdminUsersList from '@/components/admin/AdminUsersList';
 import AdminStudentDetails from '@/components/admin/AdminStudentDetails';
 import AdminRamadanManager from '@/components/admin/AdminRamadanManager';
-import AdminMessages from '@/components/admin/AdminMessages';
+import AdminMessaging from '@/components/admin/AdminMessaging';
 import { 
   Users, 
   GraduationCap, 
@@ -117,7 +117,7 @@ const Admin = () => {
           <Button variant="ghost" onClick={handleBack} className="mb-4">
             ← Retour
           </Button>
-          <AdminMessages />
+          <AdminMessaging />
         </div>
       </AppLayout>
     );

@@ -530,27 +530,44 @@ export type Database = {
       }
       user_messages: {
         Row: {
+          conversation_id: string | null
           created_at: string
           id: string
           is_read: boolean
           message: string
+          parent_message_id: string | null
+          sender_type: string
           user_id: string
         }
         Insert: {
+          conversation_id?: string | null
           created_at?: string
           id?: string
           is_read?: boolean
           message: string
+          parent_message_id?: string | null
+          sender_type?: string
           user_id: string
         }
         Update: {
+          conversation_id?: string | null
           created_at?: string
           id?: string
           is_read?: boolean
           message?: string
+          parent_message_id?: string | null
+          sender_type?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_messages_parent_message_id_fkey"
+            columns: ["parent_message_id"]
+            isOneToOne: false
+            referencedRelation: "user_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_nourania_progress: {
         Row: {
