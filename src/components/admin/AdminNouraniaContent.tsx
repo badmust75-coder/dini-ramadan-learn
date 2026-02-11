@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,7 +12,7 @@ const AdminNouraniaContent = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [uploadingLessonId, setUploadingLessonId] = useState<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { data: lessons = [] } = useQuery({
     queryKey: ['admin-nourania-lessons'],
@@ -26,7 +26,7 @@ const AdminNouraniaContent = () => {
     },
   });
 
-  const { data: contents = [] } = useQuery({
+  const { data: contents = [], refetch: refetchContents } = useQuery({
     queryKey: ['admin-nourania-contents'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -54,25 +54,48 @@ const AdminNouraniaContent = () => {
     }
   };
 
-  const uploadMutation = useMutation({
-    mutationFn: async ({ lessonId, files }: { lessonId: number; files: FileList }) => {
+  const handleUpload = useCallback(async (lessonId: number, files: FileList) => {
+    if (!user?.id) {
+      toast.error('Vous devez être connecté');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadingLessonId(lessonId);
+
+    try {
       const existingCount = contents.filter(c => c.lesson_id === lessonId).length;
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const ext = file.name.split('.').pop();
-        const filePath = `lesson-${lessonId}/${Date.now()}-${i}.${ext}`;
+        const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+        const filePath = `lesson-${lessonId}/${uniqueName}`;
 
-        const { error: uploadError } = await supabase.storage
+        console.log(`Uploading file: ${file.name} to ${filePath}`);
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
           .from('nourania-content')
-          .upload(filePath, file);
-        if (uploadError) throw uploadError;
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error('Storage upload error:', uploadError);
+          toast.error(`Erreur upload: ${uploadError.message}`);
+          throw uploadError;
+        }
+
+        console.log('Upload success:', uploadData);
 
         const { data: urlData } = supabase.storage
           .from('nourania-content')
           .getPublicUrl(filePath);
 
-        const { error: insertError } = await supabase
+        console.log('Public URL:', urlData.publicUrl);
+
+        const { data: insertData, error: insertError } = await supabase
           .from('nourania_lesson_content')
           .insert({
             lesson_id: lessonId,
@@ -80,33 +103,46 @@ const AdminNouraniaContent = () => {
             file_url: urlData.publicUrl,
             file_name: file.name,
             display_order: existingCount + i,
-            uploaded_by: user?.id,
-          });
-        if (insertError) throw insertError;
+            uploaded_by: user.id,
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('DB insert error:', insertError);
+          toast.error(`Erreur enregistrement: ${insertError.message}`);
+          throw insertError;
+        }
+
+        console.log('DB insert success:', insertData);
       }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-nourania-contents'] });
-      toast.success('Fichier(s) téléversé(s) avec succès');
+
+      await refetchContents();
+      toast.success(`${files.length} fichier(s) téléversé(s) avec succès ✅`);
+    } catch (error) {
+      console.error('Upload process error:', error);
+    } finally {
+      setIsUploading(false);
       setUploadingLessonId(null);
-    },
-    onError: (error) => {
-      toast.error('Erreur lors du téléversement');
-      console.error(error);
-      setUploadingLessonId(null);
-    },
-  });
+    }
+  }, [user, contents, refetchContents]);
 
   const deleteMutation = useMutation({
     mutationFn: async (contentId: string) => {
       const content = contents.find(c => c.id === contentId);
       if (!content) return;
 
-      // Extract path from URL
-      const url = new URL(content.file_url);
-      const pathParts = url.pathname.split('/nourania-content/');
-      if (pathParts[1]) {
-        await supabase.storage.from('nourania-content').remove([pathParts[1]]);
+      // Extract storage path from public URL
+      try {
+        const url = new URL(content.file_url);
+        const bucketPath = url.pathname.split('/object/public/nourania-content/');
+        if (bucketPath[1]) {
+          const decodedPath = decodeURIComponent(bucketPath[1]);
+          console.log('Deleting storage file:', decodedPath);
+          await supabase.storage.from('nourania-content').remove([decodedPath]);
+        }
+      } catch (e) {
+        console.warn('Could not delete storage file:', e);
       }
 
       const { error } = await supabase
@@ -117,44 +153,26 @@ const AdminNouraniaContent = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-nourania-contents'] });
+      queryClient.invalidateQueries({ queryKey: ['nourania-lesson-contents'] });
       toast.success('Contenu supprimé');
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Delete error:', error);
       toast.error('Erreur lors de la suppression');
     },
   });
-
-  const handleUploadClick = (lessonId: number) => {
-    setUploadingLessonId(lessonId);
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && uploadingLessonId) {
-      uploadMutation.mutate({ lessonId: uploadingLessonId, files: e.target.files });
-    }
-    e.target.value = '';
-  };
 
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-bold text-foreground">Gestion du contenu Nourania</h3>
       <p className="text-sm text-muted-foreground">
-        Téléversez des vidéos, PDF ou images pour chaque leçon.
+        Téléversez des vidéos, PDF ou images pour chaque leçon. Les fichiers persistent jusqu'à suppression manuelle.
       </p>
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept="video/*,application/pdf,image/*"
-        className="hidden"
-        onChange={handleFileChange}
-      />
 
       <div className="space-y-3">
         {lessons.map((lesson) => {
           const lessonContents = contents.filter(c => c.lesson_id === lesson.id);
+          const isThisLessonUploading = isUploading && uploadingLessonId === lesson.id;
 
           return (
             <Card key={lesson.id}>
@@ -164,19 +182,33 @@ const AdminNouraniaContent = () => {
                     <p className="font-bold">Leçon {lesson.lesson_number}</p>
                     <p className="text-sm text-muted-foreground">{lesson.title_french}</p>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => handleUploadClick(lesson.id)}
-                    disabled={uploadMutation.isPending && uploadingLessonId === lesson.id}
-                    className="gap-2"
-                  >
-                    {uploadMutation.isPending && uploadingLessonId === lesson.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Upload className="h-4 w-4" />
-                    )}
-                    Ajouter
-                  </Button>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      multiple
+                      accept="video/*,application/pdf,image/*,.doc,.docx"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          handleUpload(lesson.id, e.target.files);
+                        }
+                        e.target.value = '';
+                      }}
+                      disabled={isThisLessonUploading}
+                    />
+                    <Button
+                      size="sm"
+                      disabled={isThisLessonUploading}
+                      className="gap-2 pointer-events-none"
+                    >
+                      {isThisLessonUploading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4" />
+                      )}
+                      {isThisLessonUploading ? 'Envoi...' : 'Ajouter'}
+                    </Button>
+                  </div>
                 </div>
 
                 {lessonContents.length > 0 && (
