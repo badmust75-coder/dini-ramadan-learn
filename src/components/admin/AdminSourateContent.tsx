@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Upload, Trash2, FileText, Video, Image, File, Loader2, Unlock, Lock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
+import ConfirmDeleteDialog from '@/components/ui/confirm-delete-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 
 const SOURATES_DATA = [
@@ -34,6 +35,7 @@ const AdminSourateContent = () => {
   const [uploadingSourateId, setUploadingSourateId] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [unlockUserId, setUnlockUserId] = useState('');
+  const [deleteContentId, setDeleteContentId] = useState<string | null>(null);
 
   const { data: sourates = [] } = useQuery({
     queryKey: ['admin-sourates-list'],
@@ -298,7 +300,7 @@ const AdminSourateContent = () => {
                           variant="ghost"
                           size="icon"
                           className="shrink-0 text-destructive hover:text-destructive"
-                          onClick={() => deleteMutation.mutate(content.id)}
+                          onClick={() => setDeleteContentId(content.id)}
                           disabled={deleteMutation.isPending}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -316,6 +318,15 @@ const AdminSourateContent = () => {
           );
         })}
       </div>
+      <ConfirmDeleteDialog
+        open={!!deleteContentId}
+        onOpenChange={(open) => !open && setDeleteContentId(null)}
+        onConfirm={() => {
+          if (deleteContentId) deleteMutation.mutate(deleteContentId);
+          setDeleteContentId(null);
+        }}
+        description="Ce contenu sera supprimé définitivement."
+      />
     </div>
   );
 };

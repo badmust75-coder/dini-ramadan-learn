@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import ConfirmDeleteDialog from '@/components/ui/confirm-delete-dialog';
 
 // Icon mapping
 const iconMap: Record<string, React.ElementType> = {
@@ -42,6 +43,7 @@ const Priere = () => {
   const [newCategoryName, setNewCategoryName] = useState({ arabic: '', french: '' });
   const [newContent, setNewContent] = useState({ type: 'text', title: '', content: '' });
   const [selectedCategoryForContent, setSelectedCategoryForContent] = useState<string | null>(null);
+  const [deleteContentId, setDeleteContentId] = useState<string | null>(null);
 
   // Fetch categories from database
   const { data: categories = [] } = useQuery({
@@ -433,7 +435,7 @@ const Priere = () => {
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 text-destructive hover:text-destructive"
-                                  onClick={() => deleteContentMutation.mutate(item.id)}
+                                  onClick={() => setDeleteContentId(item.id)}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -481,6 +483,15 @@ const Priere = () => {
           })}
         </div>
       </div>
+      <ConfirmDeleteDialog
+        open={!!deleteContentId}
+        onOpenChange={(open) => !open && setDeleteContentId(null)}
+        onConfirm={() => {
+          if (deleteContentId) deleteContentMutation.mutate(deleteContentId);
+          setDeleteContentId(null);
+        }}
+        description="Ce contenu sera supprimé définitivement."
+      />
     </AppLayout>
   );
 };

@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import ConfirmDeleteDialog from '@/components/ui/confirm-delete-dialog';
 
 interface AdminRamadanManagerProps {
   onBack: () => void;
@@ -48,6 +49,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
   
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'quiz' | 'allQuizzes'; id?: string; dayId?: number } | null>(null);
   
   // Quiz form: 5 questions per day
   const [questions, setQuestions] = useState<QuestionForm[]>([
@@ -546,7 +548,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => deleteAllQuizzesMutation.mutate(selectedDay)}
+                    onClick={() => setDeleteTarget({ type: 'allQuizzes', dayId: selectedDay })}
                     className="text-destructive hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4 mr-1" />
@@ -564,16 +566,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 text-destructive"
-                        onClick={() => {
-                          deleteQuizMutation.mutate(qf.existingId!);
-                          updateQuestion(qIdx, 'existingId', undefined);
-                          updateQuestion(qIdx, 'question', '');
-                          setQuestions(prev => {
-                            const copy = [...prev];
-                            copy[qIdx] = emptyQuestion();
-                            return copy;
-                          });
-                        }}
+                        onClick={() => setDeleteTarget({ type: 'quiz', id: qf.existingId })}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -619,6 +612,30 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
           </div>
         </DialogContent>
       </Dialog>
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget?.type === 'quiz' && deleteTarget.id) {
+            deleteQuizMutation.mutate(deleteTarget.id);
+            const qIdx = questions.findIndex(q => q.existingId === deleteTarget.id);
+            if (qIdx >= 0) {
+              setQuestions(prev => {
+                const copy = [...prev];
+                copy[qIdx] = emptyQuestion();
+                return copy;
+              });
+            }
+          } else if (deleteTarget?.type === 'allQuizzes' && deleteTarget.dayId) {
+            deleteAllQuizzesMutation.mutate(deleteTarget.dayId);
+          }
+          setDeleteTarget(null);
+        }}
+        title={deleteTarget?.type === 'allQuizzes' ? 'Supprimer toutes les questions ?' : 'Supprimer cette question ?'}
+        description={deleteTarget?.type === 'allQuizzes'
+          ? 'Toutes les questions de ce jour seront supprimées définitivement.'
+          : 'Cette question sera supprimée définitivement.'}
+      />
     </div>
   );
 };

@@ -7,12 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Upload, Trash2, FileText, Video, Image, File, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import ConfirmDeleteDialog from '@/components/ui/confirm-delete-dialog';
 
 const AdminNouraniaContent = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [uploadingLessonId, setUploadingLessonId] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [deleteContentId, setDeleteContentId] = useState<string | null>(null);
 
   const { data: lessons = [] } = useQuery({
     queryKey: ['admin-nourania-lessons'],
@@ -229,7 +231,7 @@ const AdminNouraniaContent = () => {
                           variant="ghost"
                           size="icon"
                           className="shrink-0 text-destructive hover:text-destructive"
-                          onClick={() => deleteMutation.mutate(content.id)}
+                          onClick={() => setDeleteContentId(content.id)}
                           disabled={deleteMutation.isPending}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -247,6 +249,15 @@ const AdminNouraniaContent = () => {
           );
         })}
       </div>
+      <ConfirmDeleteDialog
+        open={!!deleteContentId}
+        onOpenChange={(open) => !open && setDeleteContentId(null)}
+        onConfirm={() => {
+          if (deleteContentId) deleteMutation.mutate(deleteContentId);
+          setDeleteContentId(null);
+        }}
+        description="Ce contenu sera supprimé définitivement."
+      />
     </div>
   );
 };
