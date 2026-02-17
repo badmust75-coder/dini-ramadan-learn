@@ -346,8 +346,9 @@ const Admin = () => {
             icon={Users}
             value={stats?.users || 0}
             subtitle="inscrits"
-            color="text-primary"
-            bgColor="bg-primary/10"
+            color="text-purple-600 dark:text-purple-400"
+            bgColor="bg-purple-100 dark:bg-purple-900/30"
+            cardBgColor="bg-purple-50/50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800"
             onClick={() => setCurrentView('users')}
           />
 
@@ -356,8 +357,9 @@ const Admin = () => {
             icon={Mail}
             value="Voir"
             subtitle="Messages des élèves"
-            color="text-primary"
-            bgColor="bg-primary/10"
+            color="text-pink-600 dark:text-pink-400"
+            bgColor="bg-pink-100 dark:bg-pink-900/30"
+            cardBgColor="bg-pink-50/50 dark:bg-pink-950/20 border-pink-200 dark:border-pink-800"
             onClick={() => setCurrentView('messages')}
           />
 
@@ -366,60 +368,62 @@ const Admin = () => {
             icon={GraduationCap}
             value={stats?.users || 0}
             subtitle="suivis"
-            color="text-gold"
-            bgColor="bg-gold/10"
+            color="text-amber-600 dark:text-amber-400"
+            bgColor="bg-amber-100 dark:bg-amber-900/30"
+            cardBgColor="bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
             onClick={() => setCurrentView('students')}
           />
 
-          <div className="space-y-2">
-            <AdminModuleCard
-              title="Ramadan"
-              icon={Moon}
-              value={`${stats?.ramadan || 0} jours`}
-              subtitle="Progression par élève"
-              color="text-primary"
-              bgColor="bg-primary/10"
-              onClick={() => setCurrentView('ramadan')}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => setCurrentView('ramadan-manage')}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Gérer vidéos & quiz
-            </Button>
-          </div>
+          <AdminModuleCard
+            title="Ramadan"
+            icon={Moon}
+            value={`${stats?.ramadan || 0} jours`}
+            subtitle="Progression par élève"
+            color="text-emerald-600 dark:text-emerald-400"
+            bgColor="bg-emerald-100 dark:bg-emerald-900/30"
+            cardBgColor="bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
+            onClick={() => setCurrentView('ramadan')}
+            actionButton={
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentView('ramadan-manage')}
+              >
+                <Settings className="h-4 w-4 mr-1" />
+                Gérer
+              </Button>
+            }
+          />
 
-          <div className="space-y-2">
-            <AdminModuleCard
-              title="Nourania"
-              icon={Sparkles}
-              value={`${stats?.nourania || 0} leçons`}
-              subtitle="Progression par élève"
-              color="text-gold"
-              bgColor="bg-gold/10"
-              onClick={() => setCurrentView('nourania')}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => setCurrentView('nourania-manage')}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Gérer le contenu
-            </Button>
-          </div>
+          <AdminModuleCard
+            title="Nourania"
+            icon={Sparkles}
+            value={`${stats?.nourania || 0} leçons`}
+            subtitle="Progression par élève"
+            color="text-sky-600 dark:text-sky-400"
+            bgColor="bg-sky-100 dark:bg-sky-900/30"
+            cardBgColor="bg-sky-50/50 dark:bg-sky-950/20 border-sky-200 dark:border-sky-800"
+            onClick={() => setCurrentView('nourania')}
+            actionButton={
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentView('nourania-manage')}
+              >
+                <Settings className="h-4 w-4 mr-1" />
+                Gérer
+              </Button>
+            }
+          />
 
           <AdminModuleCard
             title="Alphabet"
             icon={BookOpen}
             value={`${stats?.alphabet || 0} lettres`}
             subtitle="Progression par élève"
-            color="text-primary"
-            bgColor="bg-primary/10"
+            color="text-orange-600 dark:text-orange-400"
+            bgColor="bg-orange-100 dark:bg-orange-900/30"
+            cardBgColor="bg-orange-50/50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800"
             onClick={() => setCurrentView('alphabet')}
           />
 
@@ -428,39 +432,41 @@ const Admin = () => {
             icon={MessageSquare}
             value={`${stats?.invocations || 0} disponibles`}
             subtitle="Progression par élève"
-            color="text-gold"
-            bgColor="bg-gold/10"
+            color="text-teal-600 dark:text-teal-400"
+            bgColor="bg-teal-100 dark:bg-teal-900/30"
+            cardBgColor="bg-teal-50/50 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800"
             onClick={() => setCurrentView('invocations')}
           />
 
-          <div className="space-y-2">
-            <AdminModuleCard
-              title="Sourates"
-              icon={BookMarked}
-              value={`${stats?.sourates || 0} sourates`}
-              subtitle="Progression par élève"
-              color="text-primary"
-              bgColor="bg-primary/10"
-              onClick={() => setCurrentView('sourates')}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => setCurrentView('sourates-manage')}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Gérer contenu & débloquer
-            </Button>
-          </div>
+          <AdminModuleCard
+            title="Sourates"
+            icon={BookMarked}
+            value={`${stats?.sourates || 0} sourates`}
+            subtitle="Progression par élève"
+            color="text-indigo-600 dark:text-indigo-400"
+            bgColor="bg-indigo-100 dark:bg-indigo-900/30"
+            cardBgColor="bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800"
+            onClick={() => setCurrentView('sourates')}
+            actionButton={
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentView('sourates-manage')}
+              >
+                <Settings className="h-4 w-4 mr-1" />
+                Gérer
+              </Button>
+            }
+          />
 
           <AdminModuleCard
             title="Prière"
             icon={Hand}
             value={`${stats?.prayer || 0} catégories`}
             subtitle="Progression par élève"
-            color="text-gold"
-            bgColor="bg-gold/10"
+            color="text-rose-600 dark:text-rose-400"
+            bgColor="bg-rose-100 dark:bg-rose-900/30"
+            cardBgColor="bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800"
             onClick={() => setCurrentView('prayer')}
           />
         </div>

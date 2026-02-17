@@ -1,8 +1,8 @@
 import { LucideIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import React from 'react';
 
 interface AdminModuleCardProps {
   title: string;
@@ -11,8 +11,10 @@ interface AdminModuleCardProps {
   subtitle?: string;
   color: string;
   bgColor: string;
+  cardBgColor?: string;
   onClick: () => void;
   isActive?: boolean;
+  actionButton?: React.ReactNode;
 }
 
 const AdminModuleCard = ({
@@ -22,32 +24,44 @@ const AdminModuleCard = ({
   subtitle,
   color,
   bgColor,
+  cardBgColor,
   onClick,
   isActive = false,
+  actionButton,
 }: AdminModuleCardProps) => {
   return (
     <Card
       className={cn(
         'cursor-pointer transition-all duration-300 hover:shadow-elevated',
-        isActive && 'ring-2 ring-primary'
+        isActive && 'ring-2 ring-primary',
+        cardBgColor
       )}
       onClick={onClick}
     >
       <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={cn('p-3 rounded-xl', bgColor)}>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={cn('p-3 rounded-xl shrink-0', bgColor)}>
               <Icon className={cn('h-6 w-6', color)} />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="font-bold text-foreground">{title}</p>
-              <p className="text-lg font-semibold text-primary">{value}</p>
-              {subtitle && (
-                <p className="text-xs text-muted-foreground">{subtitle}</p>
-              )}
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <p className="text-lg font-semibold text-primary">{value}</p>
+                {subtitle && (
+                  <p className="text-xs text-muted-foreground">{subtitle}</p>
+                )}
+              </div>
             </div>
           </div>
-          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          <div className="flex items-center gap-2 shrink-0 sm:ml-auto">
+            {actionButton && (
+              <div onClick={(e) => e.stopPropagation()}>
+                {actionButton}
+              </div>
+            )}
+            <ChevronRight className="h-5 w-5 text-muted-foreground hidden sm:block" />
+          </div>
         </div>
       </CardContent>
     </Card>
