@@ -12,6 +12,8 @@ import AdminRamadanManager from '@/components/admin/AdminRamadanManager';
 import AdminMessaging from '@/components/admin/AdminMessaging';
 import AdminNouraniaContent from '@/components/admin/AdminNouraniaContent';
 import AdminSourateContent from '@/components/admin/AdminSourateContent';
+import AdminAlphabetContent from '@/components/admin/AdminAlphabetContent';
+import AdminInvocationContent from '@/components/admin/AdminInvocationContent';
 import AdminSourateValidations from '@/components/admin/AdminSourateValidations';
 import AdminRegistrationValidations from '@/components/admin/AdminRegistrationValidations';
 import AdminNouraniaValidations from '@/components/admin/AdminNouraniaValidations';
@@ -56,7 +58,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   FileText, List, Video, BookOpen, Star, Heart, Bell, Calendar, Image, Music,
 };
 
-type ViewType = 'dashboard' | 'users' | 'students' | 'ramadan' | 'ramadan-manage' | 'nourania' | 'nourania-manage' | 'nourania-validations' | 'alphabet' | 'invocations' | 'sourates' | 'sourates-manage' | 'sourates-validations' | 'registration-validations' | 'prayer' | 'messages' | 'dynamic-card-content';
+type ViewType = 'dashboard' | 'users' | 'students' | 'ramadan' | 'ramadan-manage' | 'nourania' | 'nourania-manage' | 'nourania-validations' | 'alphabet' | 'alphabet-manage' | 'invocations' | 'invocations-manage' | 'sourates' | 'sourates-manage' | 'sourates-validations' | 'registration-validations' | 'prayer' | 'messages' | 'dynamic-card-content';
 
 interface CardItem {
   id: string;
@@ -227,8 +229,8 @@ const Admin = () => {
     { key: 'students', title: 'Élèves', icon: GraduationCap, value: stats?.users || 0, subtitle: 'suivis', color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-900/30', cardBgColor: 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800', view: 'students' as ViewType },
     { key: 'ramadan', title: 'Ramadan', icon: Moon, value: `${stats?.ramadan || 0} jours`, subtitle: 'Progression par élève', color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-900/30', cardBgColor: 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800', view: 'ramadan' as ViewType, manageView: 'ramadan-manage' as ViewType },
     { key: 'nourania', title: 'Nourania', icon: Sparkles, value: `${stats?.nourania || 0} leçons`, subtitle: 'Progression par élève', color: 'text-sky-600 dark:text-sky-400', bgColor: 'bg-sky-100 dark:bg-sky-900/30', cardBgColor: 'bg-sky-50/50 dark:bg-sky-950/20 border-sky-200 dark:border-sky-800', view: 'nourania' as ViewType, manageView: 'nourania-manage' as ViewType },
-    { key: 'alphabet', title: 'Alphabet', icon: BookOpen, value: `${stats?.alphabet || 0} lettres`, subtitle: 'Progression par élève', color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-100 dark:bg-orange-900/30', cardBgColor: 'bg-orange-50/50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800', view: 'alphabet' as ViewType },
-    { key: 'invocations', title: 'Invocations', icon: MessageSquare, value: `${stats?.invocations || 0} disponibles`, subtitle: 'Progression par élève', color: 'text-teal-600 dark:text-teal-400', bgColor: 'bg-teal-100 dark:bg-teal-900/30', cardBgColor: 'bg-teal-50/50 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800', view: 'invocations' as ViewType },
+    { key: 'alphabet', title: 'Alphabet', icon: BookOpen, value: `${stats?.alphabet || 0} lettres`, subtitle: 'Progression par élève', color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-100 dark:bg-orange-900/30', cardBgColor: 'bg-orange-50/50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800', view: 'alphabet' as ViewType, manageView: 'alphabet-manage' as ViewType },
+    { key: 'invocations', title: 'Invocations', icon: MessageSquare, value: `${stats?.invocations || 0} disponibles`, subtitle: 'Progression par élève', color: 'text-teal-600 dark:text-teal-400', bgColor: 'bg-teal-100 dark:bg-teal-900/30', cardBgColor: 'bg-teal-50/50 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800', view: 'invocations' as ViewType, manageView: 'invocations-manage' as ViewType },
     { key: 'sourates', title: 'Sourates', icon: BookMarked, value: `${stats?.sourates || 0} sourates`, subtitle: 'Progression par élève', color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-900/30', cardBgColor: 'bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800', view: 'sourates' as ViewType, manageView: 'sourates-manage' as ViewType },
     { key: 'prayer', title: 'Prière', icon: Hand, value: `${stats?.prayer || 0} catégories`, subtitle: 'Progression par élève', color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-900/30', cardBgColor: 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800', view: 'prayer' as ViewType },
   ], [stats]);
@@ -340,6 +342,8 @@ const Admin = () => {
   if (currentView === 'ramadan-manage') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminRamadanManager onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'nourania-manage') return <AppLayout title="Tableau de bord"><div className="p-4"><Button variant="ghost" onClick={handleBack} className="mb-4">← Retour</Button><AdminNouraniaContent /></div></AppLayout>;
   if (currentView === 'sourates-manage') return <AppLayout title="Tableau de bord"><div className="p-4"><Button variant="ghost" onClick={handleBack} className="mb-4">← Retour</Button><AdminSourateContent /></div></AppLayout>;
+  if (currentView === 'alphabet-manage') return <AppLayout title="Tableau de bord"><div className="p-4"><Button variant="ghost" onClick={handleBack} className="mb-4">← Retour</Button><AdminAlphabetContent /></div></AppLayout>;
+  if (currentView === 'invocations-manage') return <AppLayout title="Tableau de bord"><div className="p-4"><Button variant="ghost" onClick={handleBack} className="mb-4">← Retour</Button><AdminInvocationContent /></div></AppLayout>;
   if (currentView === 'sourates-validations') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminSourateValidations onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'nourania-validations') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminNouraniaValidations onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'registration-validations') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminRegistrationValidations onBack={handleBack} /></div></AppLayout>;

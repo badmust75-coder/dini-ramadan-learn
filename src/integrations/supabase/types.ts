@@ -35,6 +35,47 @@ export type Database = {
         }
         Relationships: []
       }
+      alphabet_content: {
+        Row: {
+          content_type: string
+          created_at: string
+          display_order: number
+          file_name: string
+          file_url: string
+          id: string
+          letter_id: number
+          uploaded_by: string | null
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          display_order?: number
+          file_name: string
+          file_url: string
+          id?: string
+          letter_id: number
+          uploaded_by?: string | null
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          display_order?: number
+          file_name?: string
+          file_url?: string
+          id?: string
+          letter_id?: number
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alphabet_content_letter_id_fkey"
+            columns: ["letter_id"]
+            isOneToOne: false
+            referencedRelation: "alphabet_letters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       alphabet_letters: {
         Row: {
           audio_url: string | null
@@ -150,6 +191,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      invocation_content: {
+        Row: {
+          content_type: string
+          created_at: string
+          display_order: number
+          file_name: string
+          file_url: string
+          id: string
+          invocation_id: number
+          uploaded_by: string | null
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          display_order?: number
+          file_name: string
+          file_url: string
+          id?: string
+          invocation_id: number
+          uploaded_by?: string | null
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          display_order?: number
+          file_name?: string
+          file_url?: string
+          id?: string
+          invocation_id?: number
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invocation_content_invocation_id_fkey"
+            columns: ["invocation_id"]
+            isOneToOne: false
+            referencedRelation: "invocations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invocations: {
         Row: {
