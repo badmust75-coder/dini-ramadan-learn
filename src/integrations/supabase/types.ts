@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_card_order: {
+        Row: {
+          card_key: string
+          display_order: number
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          card_key: string
+          display_order?: number
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          card_key?: string
+          display_order?: number
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       alphabet_letters: {
         Row: {
           audio_url: string | null
@@ -50,6 +71,83 @@ export type Database = {
           position_initial?: string | null
           position_isolated?: string | null
           position_medial?: string | null
+        }
+        Relationships: []
+      }
+      dashboard_card_visibility: {
+        Row: {
+          card_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_card_visibility_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_cards: {
+        Row: {
+          bg_color: string
+          content: string | null
+          content_type: string
+          created_at: string
+          created_by: string | null
+          display_order: number
+          file_name: string | null
+          file_url: string | null
+          icon: string
+          id: string
+          is_public: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          bg_color?: string
+          content?: string | null
+          content_type?: string
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          file_name?: string | null
+          file_url?: string | null
+          icon?: string
+          id?: string
+          is_public?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          bg_color?: string
+          content?: string | null
+          content_type?: string
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          file_name?: string | null
+          file_url?: string | null
+          icon?: string
+          id?: string
+          is_public?: boolean
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
