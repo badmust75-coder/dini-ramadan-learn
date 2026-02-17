@@ -451,11 +451,23 @@ const Admin = () => {
                         bgColor={card.bgColor}
                         cardBgColor={card.cardBgColor}
                         onClick={() => setCurrentView(card.view)}
-                        actionButton={card.manageView ? (
-                          <Button variant="outline" size="sm" onClick={() => setCurrentView(card.manageView!)}>
-                            <Settings className="h-4 w-4 mr-1" /> Gérer
-                          </Button>
-                        ) : undefined}
+                        actionButton={
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm"><MoreVertical className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setCurrentView(card.view)}>
+                                <BookOpen className="h-4 w-4 mr-2" /> Voir la progression
+                              </DropdownMenuItem>
+                              {card.manageView && (
+                                <DropdownMenuItem onClick={() => setCurrentView(card.manageView!)}>
+                                  <Settings className="h-4 w-4 mr-2" /> Gérer le contenu
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        }
                       />
                     </SortableCard>
                   );
