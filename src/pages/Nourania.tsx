@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Check, Lock, Play, FileText, Image as ImageIcon, File, ChevronDown } from 'lucide-react';
+import { Check, Lock, Play, FileText, Image as ImageIcon, File, ChevronDown, Moon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import AppLayout from '@/components/layout/AppLayout';
@@ -201,7 +201,7 @@ const Nourania = () => {
       return 'bg-orange-200 dark:bg-orange-300 text-orange-800';
     }
     if (!unlocked) {
-      return 'bg-muted text-muted-foreground';
+      return 'bg-green-100 dark:bg-green-200 text-green-600';
     }
     // Default unlocked but not started: amber
     return 'bg-amber-400 dark:bg-amber-500 text-amber-900';
@@ -255,17 +255,22 @@ const Nourania = () => {
                     unlocked ? 'cursor-pointer' : 'cursor-not-allowed'
                   )}
                 >
-                  {/* Moon with dynamic color */}
-                  <div className={cn(
-                    'w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0',
-                    getMoonColors(lesson.id, index)
-                  )}>
-                    {isValidated ? (
-                      <Check className="h-5 w-5" />
-                    ) : !unlocked ? (
-                      <Lock className="h-4 w-4" />
-                    ) : (
-                      lesson.lesson_number
+                  {/* Moon badge with dynamic color */}
+                  <div className="relative">
+                    <div className={cn(
+                      'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
+                      getMoonColors(lesson.id, index)
+                    )}>
+                      {isValidated ? (
+                        <Check className="h-5 w-5" />
+                      ) : (
+                        <Moon className="h-5 w-5" />
+                      )}
+                    </div>
+                    {!unlocked && (
+                      <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-muted border border-background flex items-center justify-center">
+                        <Lock className="h-2.5 w-2.5 text-muted-foreground" />
+                      </div>
                     )}
                   </div>
 
