@@ -19,6 +19,14 @@ interface RamadanDay {
   pdf_url: string | null;
 }
 
+interface DayVideo {
+  id: string;
+  day_id: number;
+  video_url: string;
+  file_name: string | null;
+  display_order: number;
+}
+
 interface Quiz {
   id: string;
   day_id: number;
@@ -78,6 +86,18 @@ const Ramadan = () => {
     },
   });
 
+  const { data: dayVideos = [] } = useQuery({
+    queryKey: ['ramadan-day-videos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ramadan_day_videos')
+        .select('*')
+        .order('display_order');
+      if (error) throw error;
+      return data as DayVideo[];
+    },
+  });
+
   const { data: userProgress = [] } = useQuery({
     queryKey: ['ramadan-progress', user?.id],
     queryFn: async () => {
@@ -103,6 +123,7 @@ const Ramadan = () => {
   const completedDays = userProgress.filter(p => p.quiz_completed).length;
   const progressPercentage = Math.round((completedDays / 30) * 100);
   const getDayProgress = (dayId: number) => userProgress.find(p => p.day_id === dayId);
+  const getVideosForDay = (dayId: number) => dayVideos.filter(v => v.day_id === dayId);
   const getQuizzesForDay = (dayId: number) => quizzes.filter(q => q.day_id === dayId);
 
   const getDayUnlockTime = (dayNumber: number): Date | null => {
@@ -138,7 +159,10 @@ const Ramadan = () => {
     return now < unlockTime;
   };
 
-  const dayHasContent = (day: RamadanDay) => !!day.video_url && getQuizzesForDay(day.id).length > 0;
+  const dayHasContent = (day: RamadanDay) => {
+    const hasVideo = getVideosForDay(day.id).length > 0 || !!day.video_url;
+    return hasVideo && getQuizzesForDay(day.id).length > 0;
+  };
 
   const markProgressMutation = useMutation({
     mutationFn: async ({ dayId, field }: { dayId: number; field: 'video_watched' | 'quiz_completed' }) => {
@@ -334,6 +358,7 @@ const Ramadan = () => {
             dayNumber={openDay.day_number}
             theme={openDay.theme}
             videoUrl={openDay.video_url}
+            videos={getVideosForDay(openDay.id)}
             quizzes={getQuizzesForDay(openDay.id)}
             quizCompleted={!!getDayProgress(openDay.id)?.quiz_completed}
             videoWatched={!!getDayProgress(openDay.id)?.video_watched}

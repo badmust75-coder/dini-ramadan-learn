@@ -601,6 +601,41 @@ export type Database = {
           },
         ]
       }
+      ramadan_day_videos: {
+        Row: {
+          created_at: string
+          day_id: number
+          display_order: number
+          file_name: string | null
+          id: string
+          video_url: string
+        }
+        Insert: {
+          created_at?: string
+          day_id: number
+          display_order?: number
+          file_name?: string | null
+          id?: string
+          video_url: string
+        }
+        Update: {
+          created_at?: string
+          day_id?: number
+          display_order?: number
+          file_name?: string | null
+          id?: string
+          video_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ramadan_day_videos_day_id_fkey"
+            columns: ["day_id"]
+            isOneToOne: false
+            referencedRelation: "ramadan_days"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ramadan_days: {
         Row: {
           created_at: string

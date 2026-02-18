@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Upload, Video, HelpCircle, Trash2, Save, Loader2, Rocket, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Upload, Video, HelpCircle, Trash2, Save, Loader2, Rocket, RotateCcw, Plus, GripVertical } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,14 @@ interface Quiz {
   correct_option: number | null;
 }
 
+interface DayVideo {
+  id: string;
+  day_id: number;
+  video_url: string;
+  file_name: string | null;
+  display_order: number;
+}
+
 interface QuestionForm {
   question: string;
   options: string[];
@@ -46,24 +54,21 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ type: 'quiz' | 'allQuizzes'; id?: string; dayId?: number } | null>(null);
-  
-  // Quiz form: 5 questions per day
-  const [questions, setQuestions] = useState<QuestionForm[]>([
-    emptyQuestion(), emptyQuestion(), emptyQuestion(), emptyQuestion(), emptyQuestion(),
-  ]);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'quiz' | 'allQuizzes' | 'video'; id?: string; dayId?: number } | null>(null);
+  const [themeInput, setThemeInput] = useState('');
+  const [savingTheme, setSavingTheme] = useState(false);
+
+  // Unlimited questions
+  const [questions, setQuestions] = useState<QuestionForm[]>([emptyQuestion()]);
 
   // Fetch ramadan settings
   const { data: settings } = useQuery({
     queryKey: ['ramadan-settings'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ramadan_settings')
-        .select('*')
-        .single();
+      const { data, error } = await supabase.from('ramadan_settings').select('*').single();
       if (error) throw error;
       return data;
     },
@@ -73,12 +78,22 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
   const { data: days = [] } = useQuery({
     queryKey: ['admin-ramadan-days-manager'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ramadan_days')
-        .select('*')
-        .order('day_number');
+      const { data, error } = await supabase.from('ramadan_days').select('*').order('day_number');
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Fetch day videos
+  const { data: dayVideos = [] } = useQuery({
+    queryKey: ['admin-ramadan-day-videos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ramadan_day_videos')
+        .select('*')
+        .order('display_order');
+      if (error) throw error;
+      return data as DayVideo[];
     },
   });
 
@@ -86,9 +101,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
   const { data: quizzes = [] } = useQuery({
     queryKey: ['admin-ramadan-quizzes'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ramadan_quizzes')
-        .select('*');
+      const { data, error } = await supabase.from('ramadan_quizzes').select('*');
       if (error) throw error;
       return data.map(q => ({
         ...q,
@@ -98,35 +111,42 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
   });
 
   const getQuizzesForDay = (dayId: number) => quizzes.filter(q => q.day_id === dayId);
+  const getVideosForDay = (dayId: number) => dayVideos.filter(v => v.day_id === dayId);
   const currentDayData = days.find(d => d.id === selectedDay);
   const currentQuizzes = selectedDay ? getQuizzesForDay(selectedDay) : [];
+  const currentVideos = selectedDay ? getVideosForDay(selectedDay) : [];
 
-  // Upload video mutation
+  // Upload video mutation (multi-video)
   const uploadVideoMutation = useMutation({
     mutationFn: async ({ dayId, file }: { dayId: number; file: File }) => {
       setUploading(true);
       const fileExt = file.name.split('.').pop();
       const fileName = `day-${dayId}-${Date.now()}.${fileExt}`;
-      
+
       const { error: uploadError } = await supabase.storage
         .from('ramadan-videos')
         .upload(fileName, file, { upsert: true });
       if (uploadError) throw uploadError;
-      
+
       const { data: { publicUrl } } = supabase.storage
         .from('ramadan-videos')
         .getPublicUrl(fileName);
-      
-      const { error: updateError } = await supabase
-        .from('ramadan_days')
-        .update({ video_url: publicUrl })
-        .eq('id', dayId);
-      if (updateError) throw updateError;
-      
+
+      const existingVideos = getVideosForDay(dayId);
+      const { error: insertError } = await supabase
+        .from('ramadan_day_videos')
+        .insert({
+          day_id: dayId,
+          video_url: publicUrl,
+          file_name: file.name,
+          display_order: existingVideos.length,
+        });
+      if (insertError) throw insertError;
+
       return publicUrl;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-ramadan-days-manager'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-ramadan-day-videos'] });
       toast({ title: 'Vidéo téléversée avec succès' });
       setUploading(false);
     },
@@ -137,12 +157,44 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
     },
   });
 
-  // Save all 4 quiz questions mutation
+  // Delete video mutation
+  const deleteVideoMutation = useMutation({
+    mutationFn: async (videoId: string) => {
+      const { error } = await supabase.from('ramadan_day_videos').delete().eq('id', videoId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-ramadan-day-videos'] });
+      toast({ title: 'Vidéo supprimée' });
+    },
+  });
+
+  // Save theme mutation
+  const saveThemeMutation = useMutation({
+    mutationFn: async ({ dayId, theme }: { dayId: number; theme: string }) => {
+      const { error } = await supabase
+        .from('ramadan_days')
+        .update({ theme: theme || null })
+        .eq('id', dayId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-ramadan-days-manager'] });
+      toast({ title: 'Thème enregistré' });
+      setSavingTheme(false);
+    },
+    onError: () => {
+      toast({ title: 'Erreur lors de l\'enregistrement', variant: 'destructive' });
+      setSavingTheme(false);
+    },
+  });
+
+  // Save quiz questions (unlimited)
   const saveQuizzesMutation = useMutation({
     mutationFn: async ({ dayId, questionForms }: { dayId: number; questionForms: QuestionForm[] }) => {
       for (const qf of questionForms) {
-        if (!qf.question.trim()) continue; // skip empty questions
-        
+        if (!qf.question.trim()) continue;
+
         if (qf.existingId) {
           const { error } = await supabase
             .from('ramadan_quizzes')
@@ -168,7 +220,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-ramadan-quizzes'] });
-      toast({ title: 'Quiz enregistré avec succès (5 questions)' });
+      toast({ title: 'Quiz enregistré avec succès' });
     },
     onError: () => {
       toast({ title: 'Erreur lors de l\'enregistrement', variant: 'destructive' });
@@ -179,10 +231,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
   const deleteQuizMutation = useMutation({
     mutationFn: async (quizId: string) => {
       await supabase.from('quiz_responses').delete().eq('quiz_id', quizId);
-      const { error } = await supabase
-        .from('ramadan_quizzes')
-        .delete()
-        .eq('id', quizId);
+      const { error } = await supabase.from('ramadan_quizzes').delete().eq('id', quizId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -203,35 +252,28 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-ramadan-quizzes'] });
       toast({ title: 'Toutes les questions supprimées' });
-      setQuestions([emptyQuestion(), emptyQuestion(), emptyQuestion(), emptyQuestion(), emptyQuestion()]);
+      setQuestions([emptyQuestion()]);
     },
   });
 
-  // Reset calendar mutation - resets all users' progress
+  // Reset calendar mutation
   const resetCalendarMutation = useMutation({
     mutationFn: async () => {
-      // Delete all quiz responses
       const { error: respError } = await supabase
         .from('quiz_responses')
         .delete()
         .neq('id', '00000000-0000-0000-0000-000000000000');
       if (respError) throw respError;
 
-      // Delete all user ramadan progress
       const { error: progError } = await supabase
         .from('user_ramadan_progress')
         .delete()
         .neq('id', '00000000-0000-0000-0000-000000000000');
       if (progError) throw progError;
 
-      // Reset settings: disable start and clear started_at
       const { error: settError } = await supabase
         .from('ramadan_settings')
-        .update({
-          start_enabled: false,
-          started_at: null,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ start_enabled: false, started_at: null, updated_at: new Date().toISOString() })
         .eq('id', settings?.id);
       if (settError) throw settError;
     },
@@ -246,7 +288,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
     },
   });
 
-  // Toggle start enabled mutation
+  // Toggle start mutation
   const toggleStartMutation = useMutation({
     mutationFn: async () => {
       const newValue = !settings?.start_enabled;
@@ -254,24 +296,16 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
         start_enabled: newValue,
         updated_at: new Date().toISOString(),
       };
-      // Set started_at when enabling for the first time
       if (newValue && !settings?.started_at) {
         updateData.started_at = new Date().toISOString();
       }
-      const { error } = await supabase
-        .from('ramadan_settings')
-        .update(updateData)
-        .eq('id', settings?.id);
+      const { error } = await supabase.from('ramadan_settings').update(updateData).eq('id', settings?.id);
       if (error) throw error;
       return newValue;
     },
     onSuccess: (newValue) => {
       queryClient.invalidateQueries({ queryKey: ['ramadan-settings'] });
-      toast({
-        title: newValue
-          ? '🚀 Top départ activé ! Les élèves peuvent commencer.'
-          : 'Top départ désactivé'
-      });
+      toast({ title: newValue ? '🚀 Top départ activé !' : 'Top départ désactivé' });
     },
     onError: () => {
       toast({ title: 'Erreur lors de la mise à jour', variant: 'destructive' });
@@ -283,25 +317,25 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
     if (file && selectedDay) {
       uploadVideoMutation.mutate({ dayId: selectedDay, file });
     }
+    // Reset so same file can be re-selected
+    e.target.value = '';
   };
 
   const handleOpenDay = (dayId: number) => {
     setSelectedDay(dayId);
+    const day = days.find(d => d.id === dayId);
+    setThemeInput(day?.theme || '');
     const existing = getQuizzesForDay(dayId);
-    const newQuestions: QuestionForm[] = [];
-    for (let i = 0; i < 5; i++) {
-      if (existing[i]) {
-        newQuestions.push({
-          question: existing[i].question,
-          options: existing[i].options,
-          correctOption: existing[i].correct_option ?? 0,
-          existingId: existing[i].id,
-        });
-      } else {
-        newQuestions.push(emptyQuestion());
-      }
+    if (existing.length > 0) {
+      setQuestions(existing.map(q => ({
+        question: q.question,
+        options: q.options,
+        correctOption: q.correct_option ?? 0,
+        existingId: q.id,
+      })));
+    } else {
+      setQuestions([emptyQuestion()]);
     }
-    setQuestions(newQuestions);
   };
 
   const updateQuestion = (idx: number, field: keyof QuestionForm, value: unknown) => {
@@ -322,9 +356,21 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
     });
   };
 
+  const addQuestion = () => {
+    setQuestions(prev => [...prev, emptyQuestion()]);
+  };
+
+  const removeQuestion = (idx: number) => {
+    const qf = questions[idx];
+    if (qf.existingId) {
+      setDeleteTarget({ type: 'quiz', id: qf.existingId });
+    } else {
+      setQuestions(prev => prev.filter((_, i) => i !== idx));
+    }
+  };
+
   const handleSaveQuiz = () => {
     if (!selectedDay) return;
-    
     const filledQuestions = questions.filter(q => q.question.trim());
     if (filledQuestions.length === 0) {
       toast({ title: 'Veuillez remplir au moins une question', variant: 'destructive' });
@@ -336,8 +382,13 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
         return;
       }
     }
-    
     saveQuizzesMutation.mutate({ dayId: selectedDay, questionForms: questions });
+  };
+
+  const handleSaveTheme = () => {
+    if (!selectedDay) return;
+    setSavingTheme(true);
+    saveThemeMutation.mutate({ dayId: selectedDay, theme: themeInput });
   };
 
   return (
@@ -349,11 +400,11 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
         </Button>
         <div className="flex-1">
           <h2 className="text-xl font-bold text-foreground">Gestion Ramadan</h2>
-          <p className="text-sm text-muted-foreground">Téléverser vidéos et créer quiz (5 questions/jour)</p>
+          <p className="text-sm text-muted-foreground">Vidéos (playlist), quiz illimité et thèmes personnalisés</p>
         </div>
       </div>
 
-      {/* Top Départ Button */}
+      {/* Top Départ */}
       <Card className={settings?.start_enabled ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : ''}>
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
@@ -378,20 +429,15 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
             >
               {toggleStartMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
-              ) : settings?.start_enabled ? (
-                'Désactiver'
-              ) : (
-                <>
-                  <Rocket className="h-4 w-4 mr-2" />
-                  Lancer !
-                </>
+              ) : settings?.start_enabled ? 'Désactiver' : (
+                <><Rocket className="h-4 w-4 mr-2" />Lancer !</>
               )}
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Reset Button */}
+      {/* Reset */}
       <Card className="border-orange-300 dark:border-orange-700">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
@@ -401,9 +447,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
               </div>
               <div>
                 <p className="font-bold text-foreground">Réinitialiser</p>
-                <p className="text-sm text-muted-foreground">
-                  Remet à zéro la progression de tous les élèves
-                </p>
+                <p className="text-sm text-muted-foreground">Remet à zéro la progression de tous les élèves</p>
               </div>
             </div>
             <Button
@@ -419,10 +463,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
               {resetCalendarMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Réinitialiser
-                </>
+                <><RotateCcw className="h-4 w-4 mr-2" />Réinitialiser</>
               )}
             </Button>
           </div>
@@ -432,16 +473,18 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
       {/* Days Grid */}
       <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-10 gap-2">
         {days.map((day) => {
-          const hasVideo = !!day.video_url;
+          const videoCount = getVideosForDay(day.id).length;
+          // Also check legacy video_url
+          const hasVideo = videoCount > 0 || !!day.video_url;
           const quizCount = getQuizzesForDay(day.id).length;
-          
+
           return (
             <button
               key={day.id}
               onClick={() => handleOpenDay(day.id)}
               className={`
                 aspect-square rounded-xl flex flex-col items-center justify-center text-sm font-bold transition-all duration-200
-                ${hasVideo && quizCount >= 5
+                ${hasVideo && quizCount >= 1
                   ? 'bg-gradient-to-br from-green-500 to-green-600 text-white'
                   : hasVideo || quizCount > 0
                   ? 'bg-gradient-to-br from-gold to-gold-dark text-primary'
@@ -452,6 +495,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
               <span>{day.day_number}</span>
               <div className="flex gap-0.5 mt-1">
                 {hasVideo && <Video className="h-3 w-3" />}
+                {videoCount > 1 && <span className="text-[9px]">x{videoCount}</span>}
                 {quizCount > 0 && <span className="text-[10px]">{quizCount}Q</span>}
               </div>
             </button>
@@ -463,7 +507,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
       <div className="flex gap-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-1">
           <div className="w-4 h-4 rounded bg-gradient-to-br from-green-500 to-green-600" />
-          <span>Complet (vidéo + 5Q)</span>
+          <span>Complet</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-4 h-4 rounded bg-gradient-to-br from-gold to-gold-dark" />
@@ -488,20 +532,62 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* Video Section */}
+            {/* Theme Section */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">🏷️ Titre / Thématique du jour</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={themeInput}
+                  onChange={(e) => setThemeInput(e.target.value)}
+                  placeholder="Ex: La Patience (As-Sabr)..."
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleSaveTheme}
+                  disabled={savingTheme || saveThemeMutation.isPending}
+                  size="sm"
+                >
+                  {saveThemeMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Videos Section */}
             <div className="space-y-3">
               <Label className="flex items-center gap-2 text-base font-semibold">
                 <Video className="h-4 w-4 text-primary" />
-                Vidéo du jour
+                Vidéos du jour ({currentVideos.length})
               </Label>
-              
-              {currentDayData?.video_url ? (
+
+              {currentVideos.length > 0 ? (
                 <div className="space-y-2">
-                  <video
-                    src={currentDayData.video_url}
-                    controls
-                    className="w-full rounded-lg aspect-video bg-black"
-                  />
+                  {currentVideos.map((video, idx) => (
+                    <div key={video.id} className="flex items-center gap-2 p-2 border rounded-lg bg-muted/30">
+                      <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-muted-foreground">Vidéo {idx + 1}</p>
+                        <p className="text-xs truncate">{video.file_name || 'Vidéo téléversée'}</p>
+                      </div>
+                      <video src={video.video_url} className="h-10 w-16 rounded object-cover bg-black flex-shrink-0" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive flex-shrink-0"
+                        onClick={() => setDeleteTarget({ type: 'video', id: video.id })}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : currentDayData?.video_url ? (
+                <div className="p-2 border rounded-lg bg-muted/30">
+                  <p className="text-xs text-muted-foreground mb-1">Vidéo existante (format ancien)</p>
+                  <video src={currentDayData.video_url} controls className="w-full rounded aspect-video bg-black" />
                 </div>
               ) : (
                 <div className="border-2 border-dashed rounded-lg p-8 text-center">
@@ -509,7 +595,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
                   <p className="text-sm text-muted-foreground">Aucune vidéo</p>
                 </div>
               )}
-              
+
               <input
                 ref={fileInputRef}
                 type="file"
@@ -524,25 +610,19 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
                 className="w-full"
               >
                 {uploading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Téléversement...
-                  </>
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Téléversement...</>
                 ) : (
-                  <>
-                    <Upload className="h-4 w-4 mr-2" />
-                    {currentDayData?.video_url ? 'Remplacer la vidéo' : 'Téléverser une vidéo'}
-                  </>
+                  <><Upload className="h-4 w-4 mr-2" />Ajouter une vidéo</>
                 )}
               </Button>
             </div>
 
-            {/* Quiz Section: 5 Questions */}
+            {/* Quiz Section: Unlimited */}
             <div className="space-y-4 border-t pt-4">
               <div className="flex items-center justify-between">
                 <Label className="flex items-center gap-2 text-base font-semibold">
                   <HelpCircle className="h-4 w-4 text-gold" />
-                  Quiz du jour (5 questions)
+                  Quiz du jour ({currentQuizzes.length} question{currentQuizzes.length !== 1 ? 's' : ''})
                 </Label>
                 {currentQuizzes.length > 0 && selectedDay && (
                   <Button
@@ -561,16 +641,14 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
                 <div key={qIdx} className="space-y-2 p-3 rounded-lg border bg-muted/30">
                   <div className="flex items-center justify-between">
                     <Label className="text-sm font-medium">Question {qIdx + 1}</Label>
-                    {qf.existingId && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-destructive"
-                        onClick={() => setDeleteTarget({ type: 'quiz', id: qf.existingId })}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-destructive"
+                      onClick={() => removeQuestion(qIdx)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
                   </div>
                   <Textarea
                     value={qf.question}
@@ -600,41 +678,59 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
                 </div>
               ))}
 
+              {/* Add question button */}
+              <Button
+                variant="outline"
+                onClick={addQuestion}
+                className="w-full border-dashed"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter une question
+              </Button>
+
               <Button
                 onClick={handleSaveQuiz}
                 disabled={saveQuizzesMutation.isPending}
                 className="w-full"
               >
                 <Save className="h-4 w-4 mr-2" />
-                {currentQuizzes.length > 0 ? 'Mettre à jour le quiz' : 'Créer le quiz (5 questions)'}
+                {saveQuizzesMutation.isPending ? (
+                  <><Loader2 className="h-4 w-4 animate-spin mr-2" />Enregistrement...</>
+                ) : (
+                  currentQuizzes.length > 0 ? 'Mettre à jour le quiz' : 'Créer le quiz'
+                )}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
       <ConfirmDeleteDialog
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         onConfirm={() => {
           if (deleteTarget?.type === 'quiz' && deleteTarget.id) {
             deleteQuizMutation.mutate(deleteTarget.id);
-            const qIdx = questions.findIndex(q => q.existingId === deleteTarget.id);
-            if (qIdx >= 0) {
-              setQuestions(prev => {
-                const copy = [...prev];
-                copy[qIdx] = emptyQuestion();
-                return copy;
-              });
-            }
+            setQuestions(prev => prev.filter(q => q.existingId !== deleteTarget.id));
           } else if (deleteTarget?.type === 'allQuizzes' && deleteTarget.dayId) {
             deleteAllQuizzesMutation.mutate(deleteTarget.dayId);
+          } else if (deleteTarget?.type === 'video' && deleteTarget.id) {
+            deleteVideoMutation.mutate(deleteTarget.id);
           }
           setDeleteTarget(null);
         }}
-        title={deleteTarget?.type === 'allQuizzes' ? 'Supprimer toutes les questions ?' : 'Supprimer cette question ?'}
-        description={deleteTarget?.type === 'allQuizzes'
-          ? 'Toutes les questions de ce jour seront supprimées définitivement.'
-          : 'Cette question sera supprimée définitivement.'}
+        title={
+          deleteTarget?.type === 'allQuizzes' ? 'Supprimer toutes les questions ?' :
+          deleteTarget?.type === 'video' ? 'Supprimer cette vidéo ?' :
+          'Supprimer cette question ?'
+        }
+        description={
+          deleteTarget?.type === 'allQuizzes'
+            ? 'Toutes les questions de ce jour seront supprimées définitivement.'
+            : deleteTarget?.type === 'video'
+            ? 'Cette vidéo sera supprimée définitivement.'
+            : 'Cette question sera supprimée définitivement.'
+        }
       />
     </div>
   );

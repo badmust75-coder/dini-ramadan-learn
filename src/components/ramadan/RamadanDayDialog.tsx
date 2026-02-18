@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Check, ChevronRight, Play, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Check, ChevronRight, SkipForward, RotateCcw, Pause, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Quiz {
@@ -14,12 +15,20 @@ interface Quiz {
   correct_option: number | null;
 }
 
+interface DayVideo {
+  id: string;
+  video_url: string;
+  file_name: string | null;
+  display_order: number;
+}
+
 interface RamadanDayDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   dayNumber: number;
   theme: string | null;
-  videoUrl: string | null;
+  videoUrl: string | null; // legacy single video
+  videos: DayVideo[];     // new multi-video list
   quizzes: Quiz[];
   quizCompleted: boolean;
   videoWatched: boolean;
@@ -36,6 +45,7 @@ const RamadanDayDialog = ({
   dayNumber,
   theme,
   videoUrl,
+  videos,
   quizzes,
   quizCompleted,
   videoWatched,
@@ -44,24 +54,39 @@ const RamadanDayDialog = ({
   onSaveQuizResponse,
 }: RamadanDayDialogProps) => {
   const [step, setStep] = useState<Step>('video');
+  const [currentVideoIdx, setCurrentVideoIdx] = useState(0);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [answerResult, setAnswerResult] = useState<boolean | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
   const [wrongCount, setWrongCount] = useState(0);
   const [answeredCount, setAnsweredCount] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const quizRef = useRef<HTMLDivElement>(null);
 
-  const currentQuiz = quizzes[currentQuestionIdx];
+  // Determine video playlist: prefer new multi-video list, fallback to legacy
+  const playlist: DayVideo[] = videos.length > 0
+    ? videos
+    : videoUrl
+    ? [{ id: 'legacy', video_url: videoUrl, file_name: null, display_order: 0 }]
+    : [];
+
+  const currentVideo = playlist[currentVideoIdx] ?? null;
+  const totalVideos = playlist.length;
   const totalQuestions = quizzes.length;
+  const currentQuiz = quizzes[currentQuestionIdx];
 
   const resetState = () => {
     setStep('video');
+    setCurrentVideoIdx(0);
     setCurrentQuestionIdx(0);
     setSelectedAnswer(null);
     setAnswerResult(null);
     setCorrectCount(0);
     setWrongCount(0);
     setAnsweredCount(0);
+    setIsPlaying(false);
   };
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -69,15 +94,64 @@ const RamadanDayDialog = ({
     onOpenChange(isOpen);
   };
 
+  // Auto-play next video in playlist, or transition to quiz at end
   const handleVideoEnded = () => {
     if (!videoWatched) onMarkVideoWatched();
+    if (currentVideoIdx < totalVideos - 1) {
+      // Move to next video — autoplay triggers via useEffect
+      setCurrentVideoIdx(prev => prev + 1);
+    } else {
+      // Last video ended → auto-transition to quiz
+      goToQuiz();
+    }
+  };
+
+  // When video index changes, auto-play the new video
+  useEffect(() => {
+    if (step === 'video' && videoRef.current && currentVideoIdx > 0) {
+      videoRef.current.play().catch(() => {});
+      setIsPlaying(true);
+    }
+  }, [currentVideoIdx, step]);
+
+  const goToQuiz = () => {
     setStep('quiz');
+    // Scroll quiz section into view smoothly
+    setTimeout(() => {
+      quizRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   const handleSkipToQuiz = () => {
     if (!videoWatched) onMarkVideoWatched();
-    setStep('quiz');
+    goToQuiz();
   };
+
+  const handleSkipToNextVideo = () => {
+    if (!videoWatched) onMarkVideoWatched();
+    if (currentVideoIdx < totalVideos - 1) {
+      setCurrentVideoIdx(prev => prev + 1);
+    }
+  };
+
+  const handlePlayPause = () => {
+    if (!videoRef.current) return;
+    if (isPlaying) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      videoRef.current.play().catch(() => {});
+      setIsPlaying(true);
+    }
+  };
+
+  const handleSeek = (seconds: number) => {
+    if (!videoRef.current) return;
+    videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime + seconds);
+  };
+
+  const handleVideoPlay = () => setIsPlaying(true);
+  const handleVideoPause = () => setIsPlaying(false);
 
   const handleValidateAnswer = () => {
     if (selectedAnswer === null || !currentQuiz) return;
@@ -96,11 +170,9 @@ const RamadanDayDialog = ({
 
     setTimeout(() => {
       if (newAnswered >= totalQuestions) {
-        // All questions answered
         const allCorrect = newWrong === 0;
         onSubmitQuiz(allCorrect, newWrong);
         if (!allCorrect) {
-          // Reset to retry
           setCurrentQuestionIdx(0);
           setSelectedAnswer(null);
           setAnswerResult(null);
@@ -109,7 +181,6 @@ const RamadanDayDialog = ({
           setAnsweredCount(0);
         }
       } else {
-        // Next question
         setCurrentQuestionIdx(prev => prev + 1);
         setSelectedAnswer(null);
         setAnswerResult(null);
@@ -133,6 +204,11 @@ const RamadanDayDialog = ({
                 <div className="font-bold">Jour {dayNumber}</div>
                 {theme && <p className="text-sm opacity-80 font-normal">{theme}</p>}
               </div>
+              {theme && (
+                <Badge variant="outline" className="ml-auto border-white/30 text-white text-xs">
+                  {theme}
+                </Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
         </div>
@@ -148,37 +224,111 @@ const RamadanDayDialog = ({
               <p className="text-sm text-muted-foreground">
                 Vous avez déjà validé ce jour. Bravo !
               </p>
-              {videoUrl && (
-                <div className="mt-4">
-                  <p className="text-xs text-muted-foreground mb-2">Revoir la vidéo :</p>
-                  <div className="aspect-video rounded-xl overflow-hidden bg-black">
-                    <video src={videoUrl} controls className="w-full h-full" />
-                  </div>
+              {playlist.length > 0 && (
+                <div className="mt-4 space-y-3">
+                  <p className="text-xs text-muted-foreground">Revoir les vidéos :</p>
+                  {playlist.map((v, idx) => (
+                    <div key={v.id} className="space-y-1">
+                      {playlist.length > 1 && (
+                        <p className="text-xs text-muted-foreground text-left">Vidéo {idx + 1}</p>
+                      )}
+                      <div className="aspect-video rounded-xl overflow-hidden bg-black">
+                        <video src={v.video_url} controls className="w-full h-full" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           ) : step === 'video' ? (
-            /* Video step */
+            /* Video step — Playlist */
             <div className="space-y-4">
-              {videoUrl ? (
+              {playlist.length > 0 && currentVideo ? (
                 <>
-                  <div className="aspect-video rounded-xl overflow-hidden bg-black">
+                  {/* Playlist indicator */}
+                  {totalVideos > 1 && (
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>Vidéo {currentVideoIdx + 1} / {totalVideos}</span>
+                      <div className="flex gap-1">
+                        {playlist.map((_, idx) => (
+                          <div
+                            key={idx}
+                            className={cn(
+                              'w-2 h-2 rounded-full transition-colors',
+                              idx < currentVideoIdx ? 'bg-green-500' :
+                              idx === currentVideoIdx ? 'bg-gold' : 'bg-muted'
+                            )}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="aspect-video rounded-xl overflow-hidden bg-black relative group">
                     <video
-                      src={videoUrl}
-                      controls
-                      autoPlay
+                      ref={videoRef}
+                      key={currentVideo.id}
+                      src={currentVideo.video_url}
                       className="w-full h-full"
+                      autoPlay={currentVideoIdx === 0}
                       onEnded={handleVideoEnded}
+                      onPlay={handleVideoPlay}
+                      onPause={handleVideoPause}
                     />
+                    {/* Custom overlay controls */}
+                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-white hover:bg-white/20"
+                        onClick={() => handleSeek(-10)}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-white hover:bg-white/20"
+                        onClick={handlePlayPause}
+                      >
+                        {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" fill="currentColor" />}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-white hover:bg-white/20"
+                        onClick={() => handleSeek(10)}
+                      >
+                        <SkipForward className="h-4 w-4" />
+                      </Button>
+                      <span className="text-white text-xs ml-1">
+                        {currentVideoIdx < totalVideos - 1
+                          ? `Vidéo ${currentVideoIdx + 1}/${totalVideos}`
+                          : 'Dernière vidéo'}
+                      </span>
+                    </div>
                   </div>
-                  <Button
-                    onClick={handleSkipToQuiz}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    <ChevronRight className="h-4 w-4 mr-2" />
-                    Passer au quiz
-                  </Button>
+
+                  <div className="flex gap-2">
+                    {currentVideoIdx < totalVideos - 1 && (
+                      <Button
+                        onClick={handleSkipToNextVideo}
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        <ChevronRight className="h-4 w-4 mr-2" />
+                        Vidéo suivante
+                      </Button>
+                    )}
+                    <Button
+                      onClick={handleSkipToQuiz}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      <ChevronRight className="h-4 w-4 mr-2" />
+                      Passer au quiz
+                    </Button>
+                  </div>
                 </>
               ) : (
                 <div className="text-center py-8">
@@ -190,8 +340,8 @@ const RamadanDayDialog = ({
               )}
             </div>
           ) : (
-            /* Quiz step - one question at a time */
-            <div className="space-y-4">
+            /* Quiz step — one question at a time */
+            <div ref={quizRef} className="space-y-4">
               {currentQuiz && (
                 <>
                   {/* Progress indicator */}
@@ -203,11 +353,8 @@ const RamadanDayDialog = ({
                           key={idx}
                           className={cn(
                             'w-2 h-2 rounded-full transition-colors',
-                            idx < currentQuestionIdx
-                              ? 'bg-green-500'
-                              : idx === currentQuestionIdx
-                              ? 'bg-gold'
-                              : 'bg-muted'
+                            idx < currentQuestionIdx ? 'bg-green-500' :
+                            idx === currentQuestionIdx ? 'bg-gold' : 'bg-muted'
                           )}
                         />
                       ))}
