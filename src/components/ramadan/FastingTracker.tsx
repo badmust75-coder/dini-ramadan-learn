@@ -46,10 +46,9 @@ const FastingTracker = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ramadan-fasting'] }),
   });
 
-  const getFastingStatus = (dayNumber: number) => {
+  const isFasted = (dayNumber: number) => {
     const entry = fastingData.find(f => f.day_number === dayNumber);
-    if (!entry) return 'default';
-    return entry.has_fasted ? 'fasted' : 'not-fasted';
+    return entry?.has_fasted === true;
   };
 
   const fireStarConfetti = (dayNumber: number) => {
@@ -71,16 +70,9 @@ const FastingTracker = () => {
   };
 
   const handleToggle = (dayNumber: number) => {
-    const current = getFastingStatus(dayNumber);
-    if (current === 'default') {
-      toggleFastingMutation.mutate({ dayNumber, hasFasted: true });
-      setGlowingDay(dayNumber);
-      fireStarConfetti(dayNumber);
-      setTimeout(() => setGlowingDay(null), 800);
-    } else if (current === 'fasted') {
-      toggleFastingMutation.mutate({ dayNumber, hasFasted: false });
-    } else {
-      toggleFastingMutation.mutate({ dayNumber, hasFasted: true });
+    const fasted = isFasted(dayNumber);
+    toggleFastingMutation.mutate({ dayNumber, hasFasted: !fasted });
+    if (!fasted) {
       setGlowingDay(dayNumber);
       fireStarConfetti(dayNumber);
       setTimeout(() => setGlowingDay(null), 800);
@@ -97,7 +89,7 @@ const FastingTracker = () => {
       </div>
       <div className="grid grid-cols-10 gap-1.5">
         {Array.from({ length: 30 }, (_, i) => i + 1).map(day => {
-          const status = getFastingStatus(day);
+          const fasted = isFasted(day);
           const isGlowing = glowingDay === day;
           return (
             <button
@@ -107,21 +99,19 @@ const FastingTracker = () => {
               className={cn(
                 'relative flex items-center justify-center w-full aspect-square rounded-lg transition-all duration-200 hover:scale-110',
               )}
-              title={`Jour ${day} - ${status === 'fasted' ? 'Jeûné ✓' : status === 'not-fasted' ? 'Non jeûné' : 'Cliquer pour marquer'}`}
+              title={`Jour ${day} - ${fasted ? 'Jeûné ✓' : 'Cliquer pour marquer'}`}
             >
               <Star
                 className={cn(
                   'h-5 w-5 sm:h-6 sm:w-6 transition-all duration-300',
-                  status === 'fasted' && 'text-green-500 fill-green-500 drop-shadow-[0_0_4px_rgba(34,197,94,0.6)]',
-                  status === 'fasted' && '[stroke:hsl(45,93%,47%)] [stroke-width:1.5]',
-                  status === 'not-fasted' && 'text-yellow-400 fill-yellow-400',
-                  status === 'default' && 'text-gray-300 fill-gray-200',
+                  fasted && 'text-green-500 fill-green-500 drop-shadow-[0_0_4px_rgba(34,197,94,0.6)] [stroke:hsl(45,93%,47%)] [stroke-width:1.5]',
+                  !fasted && 'text-gray-300 fill-gray-200',
                   isGlowing && 'animate-pulse scale-125 drop-shadow-[0_0_10px_rgba(34,197,94,0.8)]',
                 )}
               />
               <span className={cn(
                 "absolute text-[7px] font-bold",
-                status === 'fasted' ? 'text-white' : status === 'not-fasted' ? 'text-amber-900' : 'text-gray-500',
+                fasted ? 'text-white' : 'text-gray-500',
               )}>{day}</span>
             </button>
           );
@@ -131,10 +121,6 @@ const FastingTracker = () => {
         <div className="flex items-center gap-1">
           <Star className="h-3 w-3 text-green-500 fill-green-500 [stroke:hsl(45,93%,47%)] [stroke-width:1.5]" />
           <span>Jeûné</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
-          <span>Non jeûné</span>
         </div>
         <div className="flex items-center gap-1">
           <Star className="h-3 w-3 text-gray-300 fill-gray-200" />
