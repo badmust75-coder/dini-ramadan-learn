@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -60,21 +60,94 @@ const RamadanDayDialog = ({
   onSaveQuizResponse,
 }: RamadanDayDialogProps) => {
   const [step, setStep] = useState<Step>('video');
+  const [isTrainingMode, setIsTrainingMode] = useState(false);
   const [currentVideoIdx, setCurrentVideoIdx] = useState(0);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
-  const [attemptCount, setAttemptCount] = useState(0); // 0 = not attempted, 1 = first attempt done, 2 = second attempt done
+  const [attemptCount, setAttemptCount] = useState(0);
   const [answerResult, setAnswerResult] = useState<'correct' | 'wrong-first' | 'wrong-final' | 'correct-second' | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
   const [wrongCount, setWrongCount] = useState(0);
   const [answeredCount, setAnsweredCount] = useState(0);
-  const [allFirstAttempt, setAllFirstAttempt] = useState(true); // Track perfect score
+  const [allFirstAttempt, setAllFirstAttempt] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const quizRef = useRef<HTMLDivElement>(null);
   const autoAdvanceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const { fireConfetti, fireSuccess } = useConfetti();
+
+  // Web Audio: lazy-init AudioContext on first user interaction
+  const getAudioCtx = useCallback(() => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    return audioCtxRef.current;
+  }, []);
+
+  // Ding sound – joyful bell for correct answers
+  const playDing = useCallback(() => {
+    try {
+      const ctx = getAudioCtx();
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+      gain.connect(ctx.destination);
+
+      [523.25, 659.25, 783.99].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.12);
+        osc.connect(gain);
+        osc.start(ctx.currentTime + i * 0.12);
+        osc.stop(ctx.currentTime + i * 0.12 + 0.5);
+      });
+    } catch (_) {}
+  }, [getAudioCtx]);
+
+  // Boing sound – playful spring for wrong answers
+  const playBoing = useCallback(() => {
+    try {
+      const ctx = getAudioCtx();
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+      gain.connect(ctx.destination);
+
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(300, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.4);
+      osc.connect(gain);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.7);
+    } catch (_) {}
+  }, [getAudioCtx]);
+
+  // Cleanup audio ctx on unmount
+  useEffect(() => {
+    return () => {
+      audioCtxRef.current?.close();
+    };
+  }, []);
+
+  const resetState = () => {
+    setStep('video');
+    setIsTrainingMode(false);
+    setCurrentVideoIdx(0);
+    setCurrentQuestionIdx(0);
+    setSelectedAnswers([]);
+    setAttemptCount(0);
+    setAnswerResult(null);
+    setShowExplanation(false);
+    setCorrectCount(0);
+    setWrongCount(0);
+    setAnsweredCount(0);
+    setAllFirstAttempt(true);
+    setIsPlaying(false);
+    if (autoAdvanceTimerRef.current) clearTimeout(autoAdvanceTimerRef.current);
+  };
 
   // Sort quizzes by question_order
   const sortedQuizzes = [...quizzes].sort((a, b) => (a.question_order ?? 0) - (b.question_order ?? 0));
@@ -89,22 +162,6 @@ const RamadanDayDialog = ({
   const totalVideos = playlist.length;
   const totalQuestions = sortedQuizzes.length;
   const currentQuiz = sortedQuizzes[currentQuestionIdx];
-
-  const resetState = () => {
-    setStep('video');
-    setCurrentVideoIdx(0);
-    setCurrentQuestionIdx(0);
-    setSelectedAnswers([]);
-    setAttemptCount(0);
-    setAnswerResult(null);
-    setShowExplanation(false);
-    setCorrectCount(0);
-    setWrongCount(0);
-    setAnsweredCount(0);
-    setAllFirstAttempt(true);
-    setIsPlaying(false);
-    if (autoAdvanceTimerRef.current) clearTimeout(autoAdvanceTimerRef.current);
-  };
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -179,21 +236,30 @@ const RamadanDayDialog = ({
     if (newAnswered >= totalQuestions) {
       // Quiz finished
       const allCorrect = wrongCount === 0;
-      const newWrongCount = wrongCount; // capture current value
+      const newWrongCount = wrongCount;
 
-      if (newWrongCount >= maxErrors) {
-        // Échec : trop d'erreurs, bloque la validation
-        setStep('failed');
-        onSubmitQuiz(false, newWrongCount); // ne valide pas
-      } else if (allCorrect && allFirstAttempt) {
-        // Perfect score!
-        setStep('perfect');
-        fireConfetti();
-        setTimeout(() => fireConfetti(), 500);
-        onSubmitQuiz(true, 0);
+      if (isTrainingMode) {
+        // Training mode: show result but don't call onSubmitQuiz (don't affect validation)
+        if (allCorrect && allFirstAttempt) {
+          setStep('perfect');
+          fireConfetti();
+          setTimeout(() => fireConfetti(), 500);
+        } else if (newWrongCount >= maxErrors) {
+          setStep('failed');
+        }
+        // else just close/reset — quiz done in training
       } else {
-        // Réussi (< maxErrors erreurs mais pas parfait)
-        onSubmitQuiz(allCorrect, newWrongCount);
+        if (newWrongCount >= maxErrors) {
+          setStep('failed');
+          onSubmitQuiz(false, newWrongCount);
+        } else if (allCorrect && allFirstAttempt) {
+          setStep('perfect');
+          fireConfetti();
+          setTimeout(() => fireConfetti(), 500);
+          onSubmitQuiz(true, 0);
+        } else {
+          onSubmitQuiz(allCorrect, newWrongCount);
+        }
       }
     } else {
       // Move to next question
@@ -235,6 +301,7 @@ const RamadanDayDialog = ({
     const primarySelected = selectedAnswers[0];
 
     if (isCorrect) {
+      playDing();
       if (currentAttempt === 1) {
         setAnswerResult('correct');
         setCorrectCount(prev => prev + 1);
@@ -247,6 +314,7 @@ const RamadanDayDialog = ({
       setShowExplanation(true);
       autoAdvanceTimerRef.current = setTimeout(() => advanceToNextQuestion(), 4000);
     } else {
+      playBoing();
       if (currentAttempt === 1) {
         setAnswerResult('wrong-first');
         onSaveQuizResponse(currentQuiz.id, primarySelected, 1, false);
@@ -377,6 +445,7 @@ const RamadanDayDialog = ({
                 <Button
                   onClick={() => {
                     resetState();
+                    setIsTrainingMode(true);
                     setStep('quiz');
                   }}
                   variant="outline"
