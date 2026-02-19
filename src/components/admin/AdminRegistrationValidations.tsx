@@ -22,7 +22,7 @@ const AdminRegistrationValidations = ({ onBack }: { onBack: () => void }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [revokeConfirm, setRevokeConfirm] = useState<{ open: boolean; userId: string; name: string }>({ open: false, userId: '', name: '' });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; userId: string; name: string }>({ open: false, userId: '', name: '' });
 
   const { data: allUsers, isLoading } = useQuery({
     queryKey: ['admin-all-registrations'],
@@ -75,19 +75,27 @@ const AdminRegistrationValidations = ({ onBack }: { onBack: () => void }) => {
     setProcessingId(null);
   };
 
-  const handleRevoke = async (userId: string) => {
+  const handleDeleteUser = async (userId: string) => {
     setProcessingId(userId);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_approved: false })
-        .eq('user_id', userId);
-
-      if (error) throw error;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionData.session?.access_token}`,
+          },
+          body: JSON.stringify({ user_id: userId }),
+        }
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
 
       toast({
-        title: 'Accès révoqué ❌',
-        description: "L'élève ne peut plus accéder à l'application.",
+        title: 'Utilisateur supprimé ✅',
+        description: "L'utilisateur a été définitivement supprimé.",
       });
 
       queryClient.invalidateQueries({ queryKey: ['admin-all-registrations'] });
@@ -96,12 +104,12 @@ const AdminRegistrationValidations = ({ onBack }: { onBack: () => void }) => {
       console.error(err);
       toast({
         title: 'Erreur',
-        description: "Impossible de révoquer l'accès.",
+        description: "Impossible de supprimer l'utilisateur.",
         variant: 'destructive',
       });
     }
     setProcessingId(null);
-    setRevokeConfirm({ open: false, userId: '', name: '' });
+    setDeleteConfirm({ open: false, userId: '', name: '' });
   };
 
   const pendingUsers = allUsers?.filter(u => !u.is_approved) || [];
@@ -196,7 +204,7 @@ const AdminRegistrationValidations = ({ onBack }: { onBack: () => void }) => {
                   size="sm"
                   variant="outline"
                   className="border-red-300 text-red-600 hover:bg-red-50"
-                  onClick={() => setRevokeConfirm({ open: true, userId: user.user_id, name: user.full_name || 'cet utilisateur' })}
+                  onClick={() => setDeleteConfirm({ open: true, userId: user.user_id, name: user.full_name || 'cet utilisateur' })}
                   disabled={processingId === user.user_id}
                 >
                   <ShieldOff className="h-4 w-4" />
@@ -262,11 +270,11 @@ const AdminRegistrationValidations = ({ onBack }: { onBack: () => void }) => {
       </div>
 
       <ConfirmDeleteDialog
-        open={revokeConfirm.open}
-        onOpenChange={(open) => setRevokeConfirm(prev => ({ ...prev, open }))}
-        onConfirm={() => handleRevoke(revokeConfirm.userId)}
-        title="Révoquer l'accès"
-        description={`Voulez-vous vraiment révoquer l'accès de ${revokeConfirm.name} ? Cette personne ne pourra plus accéder à l'application.`}
+        open={deleteConfirm.open}
+        onOpenChange={(open) => setDeleteConfirm(prev => ({ ...prev, open }))}
+        onConfirm={() => handleDeleteUser(deleteConfirm.userId)}
+        title="Supprimer définitivement"
+        description={`Supprimer définitivement ${deleteConfirm.name} ? Il devra se réinscrire pour accéder à nouveau à l'application.`}
       />
     </>
   );
