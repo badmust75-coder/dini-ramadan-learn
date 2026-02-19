@@ -32,7 +32,7 @@ import {
   BookMarked, Hand, Settings, Mail, ClipboardCheck, UserCheck,
   Plus, GripVertical, MoreVertical, Pencil, Trash2,
   FileText, List, Video, Star, Heart, Bell, Calendar, Image, Music,
-  ClipboardList, LayoutGrid
+  ClipboardList, LayoutGrid, Book
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -155,12 +155,25 @@ const Admin = () => {
     },
   });
 
-  // Fetch dynamic cards
+  // Fetch dynamic dashboard cards (announcements/info cards)
   const { data: dynamicCards } = useQuery({
     queryKey: ['admin-dynamic-cards'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('dashboard_cards')
+        .select('*')
+        .order('display_order');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch learning modules (non-builtin: 99 Noms, Grammaire, etc.)
+  const { data: learningModules } = useQuery({
+    queryKey: ['admin-learning-modules'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('learning_modules')
         .select('*')
         .order('display_order');
       if (error) throw error;
@@ -246,7 +259,6 @@ const Admin = () => {
     { key: 'prayer', title: 'Prière', icon: Hand, value: `${stats?.prayer || 0} catégories`, subtitle: 'Progression par élève', color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-900/30', cardBgColor: 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800', view: 'prayer' as ViewType },
     { key: 'homework', title: 'Cahier de texte', icon: ClipboardList, value: 'Gérer', subtitle: 'Devoirs par élève', color: 'text-lime-600 dark:text-lime-400', bgColor: 'bg-lime-100 dark:bg-lime-900/30', cardBgColor: 'bg-lime-50/50 dark:bg-lime-950/20 border-lime-200 dark:border-lime-800', view: 'homework' as ViewType },
     { key: 'attendance', title: 'Registre de Présence', icon: ClipboardCheck, value: 'Gérer', subtitle: 'Suivi par séance', color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-900/30', cardBgColor: 'bg-cyan-50/50 dark:bg-cyan-950/20 border-cyan-200 dark:border-cyan-800', view: 'attendance' as ViewType },
-    { key: 'modules', title: "Modules d'accueil", icon: LayoutGrid, value: 'Gérer', subtitle: 'Ordre, images, contenu', color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-900/30', cardBgColor: 'bg-violet-50/50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800', view: 'modules' as ViewType },
   ], [stats]);
 
   // Combine static + dynamic cards with ordering
@@ -455,7 +467,8 @@ const Admin = () => {
           </div>
         </button>
 
-        <h2 className="text-xl font-bold text-foreground mb-4">Gestion des élèves</h2>
+        <h2 className="text-xl font-bold text-foreground mb-2">Modules natifs</h2>
+        <p className="text-sm text-muted-foreground mb-4">Cliquer pour voir la progression • Menu ⋮ pour gérer le contenu</p>
 
         {/* Sortable cards area */}
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -503,7 +516,7 @@ const Admin = () => {
                   );
                 }
 
-                // Dynamic card
+                // Dynamic dashboard announcement card (not learning modules)
                 const dynCard = item.dynamicCard;
                 if (!dynCard) return null;
                 const DynIcon = ICON_MAP[dynCard.icon] || FileText;
@@ -531,18 +544,6 @@ const Admin = () => {
                               <DropdownMenuItem onClick={() => { setEditingCard(dynCard); setCardDialogOpen(true); }}>
                                 <Pencil className="h-4 w-4 mr-2" /> Modifier
                               </DropdownMenuItem>
-                              {dynCard.title === "99 Noms d'Allah" ? (
-                                <DropdownMenuItem onClick={() => setCurrentView('allah-names-manage')}>
-                                  <Settings className="h-4 w-4 mr-2" /> Gérer les cartes
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem onClick={() => {
-                                  setGenericModuleManage({ moduleId: dynCard.id, moduleTitle: dynCard.title });
-                                  setCurrentView('generic-module-manage');
-                                }}>
-                                  <Settings className="h-4 w-4 mr-2" /> Gérer les cartes
-                                </DropdownMenuItem>
-                              )}
                               <DropdownMenuItem onClick={() => {
                                 setSelectedDynamicCard(dynCard);
                                 setCurrentView('dynamic-card-content');
@@ -564,7 +565,60 @@ const Admin = () => {
           </SortableContext>
         </DndContext>
 
-        {/* Floating add button */}
+        {/* Learning modules section (99 Noms, Grammaire, Vocabulaire, etc.) */}
+        <div className="mt-6">
+          <h2 className="text-xl font-bold text-foreground mb-2">Modules pédagogiques</h2>
+          <p className="text-sm text-muted-foreground mb-4">Gérer les cartes, médias et ordre d'affichage de chaque module</p>
+          <div className="space-y-3">
+            {learningModules?.filter(m => !m.is_builtin).map((mod) => {
+              const isAllahNames = mod.title === "99 Noms d'Allah";
+              return (
+                <AdminModuleCard
+                  key={mod.id}
+                  title={mod.title}
+                  icon={Book}
+                  value={mod.is_active ? 'Actif' : 'Masqué'}
+                  subtitle={mod.title_arabic || ''}
+                  color="text-violet-600 dark:text-violet-400"
+                  bgColor="bg-violet-100 dark:bg-violet-900/30"
+                  cardBgColor="bg-violet-50/50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800"
+                  onClick={() => {
+                    if (isAllahNames) {
+                      setCurrentView('allah-names-manage');
+                    } else {
+                      setGenericModuleManage({ moduleId: mod.id, moduleTitle: mod.title });
+                      setCurrentView('generic-module-manage');
+                    }
+                  }}
+                  actionButton={
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm"><MoreVertical className="h-4 w-4" /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => {
+                          if (isAllahNames) {
+                            setCurrentView('allah-names-manage');
+                          } else {
+                            setGenericModuleManage({ moduleId: mod.id, moduleTitle: mod.title });
+                            setCurrentView('generic-module-manage');
+                          }
+                        }}>
+                          <Settings className="h-4 w-4 mr-2" /> Gérer les cartes
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setCurrentView('modules')}>
+                          <Pencil className="h-4 w-4 mr-2" /> Modifier le module
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  }
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Floating add button for dashboard announcement cards */}
         <button
           onClick={() => { setEditingCard(null); setCardDialogOpen(true); }}
           className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-all z-40"
@@ -591,3 +645,4 @@ const Admin = () => {
 };
 
 export default Admin;
+
