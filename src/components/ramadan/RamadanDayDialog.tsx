@@ -516,6 +516,9 @@ const RamadanDayDialog = ({
               {sortedQuizzes.length > 0 && (
                 <Button
                   onClick={() => {
+                    // Clear any pending timers first
+                    if (autoAdvanceTimerRef.current) clearTimeout(autoAdvanceTimerRef.current);
+                    // Reset ALL quiz state
                     setCurrentVideoIdx(0);
                     setCurrentQuestionIdx(0);
                     setSelectedAnswers([]);
@@ -527,8 +530,8 @@ const RamadanDayDialog = ({
                     setAnsweredCount(0);
                     setAllFirstAttempt(true);
                     setIsPlaying(false);
-                    if (autoAdvanceTimerRef.current) clearTimeout(autoAdvanceTimerRef.current);
                     setIsTrainingMode(true);
+                    // Set step LAST to trigger the quiz rendering
                     setStep('quiz');
                   }}
                   variant="outline"
