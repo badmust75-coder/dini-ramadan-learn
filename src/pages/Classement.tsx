@@ -24,26 +24,11 @@ const getRankDisplay = (rank: number) => {
       </div>
     );
   }
-  if (rank === 4) {
-    // Rank 4: Gold medal with number 4
-    return (
-      <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-yellow-300 to-yellow-500 shadow-sm border border-yellow-400">
-        <span className="text-sm font-extrabold text-yellow-900">{rank}</span>
-      </div>
-    );
-  }
-  if (rank === 5) {
-    // Rank 5: Silver medal with number 5
-    return (
-      <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-gray-200 to-gray-400 shadow-sm border border-gray-300">
-        <span className="text-sm font-extrabold text-gray-700">{rank}</span>
-      </div>
-    );
-  }
-  // Rank 6+: Bronze medal with corresponding number
+  // Rank 4+: Same yellow star with rank number inside
   return (
-    <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-amber-700 shadow-sm border border-amber-600">
-      <span className="text-sm font-extrabold text-amber-100">{rank}</span>
+    <div className="relative flex items-center justify-center w-10 h-10">
+      <Star className="h-10 w-10 text-yellow-400 fill-yellow-400 drop-shadow-[0_2px_4px_rgba(234,179,8,0.5)]" />
+      <span className="absolute text-[11px] font-extrabold text-yellow-900">{rank}</span>
     </div>
   );
 };
@@ -184,11 +169,6 @@ const Classement = () => {
                   {/* Rank display */}
                   <div className="flex-shrink-0 w-10 flex justify-center">
                     {getRankDisplay(entry.rank)}
-                  </div>
-
-                  {/* Avatar placeholder */}
-                  <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-sm font-bold text-primary">
-                    {(entry.full_name || 'É')[0].toUpperCase()}
                   </div>
 
                   {/* Name */}
