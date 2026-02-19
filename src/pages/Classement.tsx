@@ -5,6 +5,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Trophy, Medal, Star, Crown } from 'lucide-react';
 import { useEffect } from 'react';
+import { cn } from '@/lib/utils';
 
 interface RankingEntry {
   user_id: string;
@@ -13,54 +14,58 @@ interface RankingEntry {
   rank: number;
 }
 
-const getTrophyDisplay = (rank: number) => {
+const getRankDisplay = (rank: number) => {
   switch (rank) {
     case 1:
       return (
-        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-600 shadow-lg">
-          <Trophy className="h-7 w-7 text-yellow-900" />
+        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-600 shadow-lg">
+          <Trophy className="h-5 w-5 text-yellow-900" />
         </div>
       );
     case 2:
       return (
         <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-gray-200 to-gray-400 shadow-md">
-          <Trophy className="h-5 w-5 text-gray-700" />
+          <Trophy className="h-5 w-5 text-gray-600" />
         </div>
       );
     case 3:
       return (
-        <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 shadow-md">
-          <Trophy className="h-4 w-4 text-amber-200" />
+        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 shadow-md">
+          <Trophy className="h-5 w-5 text-amber-200" />
         </div>
       );
     case 4:
       return (
-        <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-yellow-200 to-yellow-500 shadow-sm">
-          <span className="text-sm font-bold text-yellow-900">1</span>
+        <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500 shadow-sm">
+          <span className="text-xs font-bold text-yellow-900">{rank}</span>
         </div>
       );
     case 5:
       return (
         <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-gray-200 to-gray-400 shadow-sm">
-          <span className="text-sm font-bold text-gray-700">2</span>
+          <span className="text-xs font-bold text-gray-700">{rank}</span>
         </div>
       );
     default:
       return (
         <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 shadow-sm">
-          <span className="text-sm font-bold text-amber-100">3</span>
+          <span className="text-xs font-bold text-amber-100">{rank}</span>
         </div>
       );
   }
 };
 
+const getRowStyle = (rank: number, isMe: boolean) => {
+  if (isMe) return 'bg-gradient-to-r from-yellow-200 to-yellow-300 dark:from-yellow-700/50 dark:to-yellow-600/40 border-yellow-400 shadow-md ring-2 ring-yellow-400/60';
+  if (rank === 1) return 'bg-gradient-to-r from-sky-100 to-sky-200 dark:from-sky-900/40 dark:to-sky-800/30 border-sky-300';
+  if (rank === 2) return 'bg-gradient-to-r from-green-100 to-green-200 dark:from-green-900/40 dark:to-green-800/30 border-green-300';
+  if (rank === 3) return 'bg-gradient-to-r from-orange-100 to-orange-200 dark:from-orange-900/40 dark:to-orange-800/30 border-orange-300';
+  return 'bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-700';
+};
+
 const getEncouragementMessage = (rank: number, total: number) => {
-  if (rank <= 3) {
-    return { text: 'Bravo Champion(ne) ! Continue de briller ! 🌟', color: 'text-yellow-600 dark:text-yellow-400' };
-  }
-  if (rank <= Math.ceil(total / 2)) {
-    return { text: 'Tu y es presque ! Encore un petit effort pour le podium ! 💪', color: 'text-primary' };
-  }
+  if (rank <= 3) return { text: 'Bravo Champion(ne) ! Continue de briller ! 🌟', color: 'text-yellow-600 dark:text-yellow-400' };
+  if (rank <= Math.ceil(total / 2)) return { text: 'Tu y es presque ! Encore un petit effort pour le podium ! 💪', color: 'text-primary' };
   return { text: 'Ne lâche rien ! Chaque petit pas compte, tu vas y arriver ! ✨', color: 'text-muted-foreground' };
 };
 
@@ -70,7 +75,6 @@ const Classement = () => {
   const { data: rankings, isLoading, refetch } = useQuery({
     queryKey: ['student-rankings'],
     queryFn: async () => {
-      // Get all rankings
       const { data: rankingData, error } = await supabase
         .from('student_ranking')
         .select('user_id, total_points')
@@ -78,7 +82,6 @@ const Classement = () => {
 
       if (error) throw error;
 
-      // Get profiles for names
       const userIds = (rankingData || []).map(r => r.user_id);
       if (userIds.length === 0) return [];
 
@@ -87,19 +90,16 @@ const Classement = () => {
         .select('user_id, full_name')
         .in('user_id', userIds);
 
-      // Assign ranks with tie handling
       const entries: RankingEntry[] = [];
       let currentRank = 1;
 
       for (let i = 0; i < (rankingData || []).length; i++) {
         const item = rankingData![i];
-        // If same points as previous, same rank
         if (i > 0 && item.total_points === rankingData![i - 1].total_points) {
-          // Same rank as previous
+          // same rank as previous (tie)
         } else {
           currentRank = i + 1;
         }
-
         entries.push({
           user_id: item.user_id,
           total_points: item.total_points,
@@ -112,32 +112,22 @@ const Classement = () => {
     },
   });
 
-  // Realtime subscription
   useEffect(() => {
     const channel = supabase
       .channel('rankings-realtime')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'student_ranking',
-      }, () => {
-        refetch();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'student_ranking' }, () => { refetch(); })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [refetch]);
 
   const myRanking = rankings?.find(r => r.user_id === user?.id);
-  const encouragement = myRanking
-    ? getEncouragementMessage(myRanking.rank, rankings?.length || 0)
-    : null;
+  const encouragement = myRanking ? getEncouragementMessage(myRanking.rank, rankings?.length || 0) : null;
 
   return (
     <AppLayout>
-      <div className="px-4 py-6 pb-24 max-w-lg mx-auto space-y-6">
+      <div className="px-4 py-6 pb-24 max-w-lg mx-auto space-y-5">
         {/* Header */}
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-1">
           <div className="flex items-center justify-center gap-2">
             <Crown className="h-7 w-7 text-secondary" />
             <h1 className="text-2xl font-bold text-foreground">Classement</h1>
@@ -147,11 +137,11 @@ const Classement = () => {
         </div>
 
         {/* My position highlight */}
-        {myRanking && (
+        {myRanking && encouragement && (
           <Card className="border-secondary/40 bg-gradient-to-r from-secondary/10 to-secondary/5">
             <CardContent className="p-4 text-center space-y-2">
               <div className="flex items-center justify-center gap-3">
-                {getTrophyDisplay(myRanking.rank)}
+                {getRankDisplay(myRanking.rank)}
                 <div>
                   <p className="font-bold text-foreground text-lg">
                     {myRanking.rank === 1 ? '1er' : `${myRanking.rank}ème`}
@@ -159,13 +149,18 @@ const Classement = () => {
                   <p className="text-sm text-muted-foreground">{myRanking.total_points} points</p>
                 </div>
               </div>
-              {encouragement && (
-                <p className={`text-sm font-medium ${encouragement.color} animate-fade-in`}>
-                  {encouragement.text}
-                </p>
-              )}
+              <p className={cn('text-sm font-medium animate-fade-in', encouragement.color)}>{encouragement.text}</p>
             </CardContent>
           </Card>
+        )}
+
+        {/* Table header */}
+        {!isLoading && rankings && rankings.length > 0 && (
+          <div className="flex items-center px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold">
+            <span className="w-16 text-center">Rang</span>
+            <span className="flex-1 ml-2">Nom</span>
+            <span className="w-20 text-right">Score</span>
+          </div>
         )}
 
         {/* Loading */}
@@ -184,49 +179,42 @@ const Classement = () => {
             {rankings?.map((entry, index) => {
               const isMe = entry.user_id === user?.id;
               return (
-                <Card
+                <div
                   key={entry.user_id}
-                  className={`transition-all duration-300 animate-fade-in ${
-                    isMe
-                      ? 'border-secondary/50 bg-secondary/5 ring-1 ring-secondary/30'
-                      : entry.rank <= 3
-                        ? 'border-secondary/20'
-                        : ''
-                  }`}
-                  style={{ animationDelay: `${index * 50}ms` }}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all duration-300 animate-fade-in',
+                    getRowStyle(entry.rank, isMe),
+                    isMe && 'scale-[1.02]',
+                  )}
+                  style={{ animationDelay: `${index * 40}ms` }}
                 >
-                  <CardContent className="p-3 flex items-center gap-3">
-                    {/* Trophy/Medal */}
-                    <div className="flex-shrink-0">
-                      {getTrophyDisplay(entry.rank)}
-                    </div>
+                  {/* Rank display */}
+                  <div className="flex-shrink-0 w-10 flex justify-center">
+                    {getRankDisplay(entry.rank)}
+                  </div>
 
-                    {/* Name & rank */}
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-semibold truncate ${isMe ? 'text-primary' : 'text-foreground'}`}>
-                        {entry.full_name || 'Élève'}
-                        {isMe && <span className="text-xs text-muted-foreground ml-1">(Toi)</span>}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Rang {entry.rank}
-                      </p>
-                    </div>
+                  {/* Avatar placeholder */}
+                  <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-sm font-bold text-primary">
+                    {(entry.full_name || 'É')[0].toUpperCase()}
+                  </div>
 
-                    {/* Points */}
-                    <div className="text-right flex-shrink-0">
-                      <p className={`font-bold text-lg ${
-                        entry.rank === 1
-                          ? 'text-gradient-gold'
-                          : entry.rank <= 3
-                            ? 'text-primary'
-                            : 'text-foreground'
-                      }`}>
-                        {entry.total_points}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">pts</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                  {/* Name */}
+                  <div className="flex-1 min-w-0">
+                    <p className={cn('font-semibold truncate text-sm', isMe ? 'text-primary' : 'text-foreground')}>
+                      {isMe ? 'Toi' : (entry.full_name || 'Élève')}
+                    </p>
+                  </div>
+
+                  {/* Score */}
+                  <div className="flex-shrink-0 w-16 text-right">
+                    <p className={cn(
+                      'font-bold text-lg',
+                      entry.rank === 1 ? 'text-yellow-600 dark:text-yellow-400' : 'text-foreground',
+                    )}>
+                      {entry.total_points}
+                    </p>
+                  </div>
+                </div>
               );
             })}
           </div>
