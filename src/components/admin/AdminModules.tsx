@@ -64,6 +64,7 @@ const AdminModules = ({ onBack }: AdminModulesProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [contentToDelete, setContentToDelete] = useState<string | null>(null);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -340,7 +341,7 @@ const AdminModules = ({ onBack }: AdminModulesProps) => {
                             {contents.map((c) => (
                               <div key={c.id} className="flex items-center justify-between text-xs py-1 px-2 bg-muted/50 rounded">
                                 <span className="truncate">{c.title} ({c.content_type})</span>
-                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => deleteContentMutation.mutate(c.id)}>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setContentToDelete(c.id)}>
                                   <Trash2 className="h-3 w-3 text-destructive" />
                                 </Button>
                               </div>
@@ -443,6 +444,14 @@ const AdminModules = ({ onBack }: AdminModulesProps) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={!!contentToDelete}
+        onOpenChange={(open) => !open && setContentToDelete(null)}
+        onConfirm={() => { if (contentToDelete) deleteContentMutation.mutate(contentToDelete); setContentToDelete(null); }}
+        title="Supprimer le contenu"
+        description="Voulez-vous vraiment supprimer ce contenu définitivement ?"
+      />
 
       <ConfirmDeleteDialog
         open={deleteOpen}
