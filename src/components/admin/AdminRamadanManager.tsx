@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Upload, Video, HelpCircle, Trash2, Save, Loader2, Rocket, RotateCcw, Plus, GripVertical } from 'lucide-react';
+import { ArrowLeft, Upload, Video, HelpCircle, Trash2, Save, Loader2, Rocket, RotateCcw, Plus, GripVertical, AlertTriangle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -182,6 +182,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
 
   // Unlimited questions
   const [questions, setQuestions] = useState<QuestionForm[]>([emptyQuestion()]);
+  const [maxErrorsInput, setMaxErrorsInput] = useState<string>('3');
 
   // DnD sensors
   const sensors = useSensors(
@@ -198,6 +199,13 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
       return data;
     },
   });
+
+  // Sync maxErrorsInput with settings
+  useEffect(() => {
+    if (settings && (settings as any).max_errors != null) {
+      setMaxErrorsInput(String((settings as any).max_errors));
+    }
+  }, [settings]);
 
   // Fetch ramadan days
   const { data: days = [] } = useQuery({
@@ -444,6 +452,24 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
     },
   });
 
+  // Save max errors threshold mutation
+  const saveMaxErrorsMutation = useMutation({
+    mutationFn: async (maxErrors: number) => {
+      const { error } = await supabase
+        .from('ramadan_settings')
+        .update({ max_errors: maxErrors, updated_at: new Date().toISOString() } as any)
+        .eq('id', settings?.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ramadan-settings'] });
+      toast({ title: `✅ Seuil mis à jour : ${maxErrorsInput} erreur(s) max` });
+    },
+    onError: () => {
+      toast({ title: 'Erreur lors de la mise à jour', variant: 'destructive' });
+    },
+  });
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && selectedDay) {
@@ -582,6 +608,70 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
               )}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Seuil d'erreurs configurables */}
+      <Card className="border-amber-300 dark:border-amber-700">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-3 rounded-xl bg-amber-100 dark:bg-amber-900/30">
+              <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="font-bold text-foreground">Seuil d'erreurs maximum</p>
+              <p className="text-sm text-muted-foreground">
+                Nombre d'erreurs autorisées avant de bloquer la validation d'un quiz
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={() => setMaxErrorsInput(prev => String(Math.max(1, parseInt(prev || '3') - 1)))}
+              >
+                -
+              </Button>
+              <Input
+                type="number"
+                min={1}
+                max={10}
+                value={maxErrorsInput}
+                onChange={e => setMaxErrorsInput(e.target.value)}
+                className="w-20 text-center font-bold text-lg"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={() => setMaxErrorsInput(prev => String(Math.min(10, parseInt(prev || '3') + 1)))}
+              >
+                +
+              </Button>
+              <span className="text-sm text-muted-foreground">erreur(s) max</span>
+            </div>
+            <Button
+              onClick={() => {
+                const val = parseInt(maxErrorsInput);
+                if (isNaN(val) || val < 1) return;
+                saveMaxErrorsMutation.mutate(val);
+              }}
+              disabled={saveMaxErrorsMutation.isPending}
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              {saveMaxErrorsMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <><Save className="h-4 w-4 mr-2" />Sauvegarder</>
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            ⚠️ Actuellement : si un élève fait {(settings as any)?.max_errors ?? 3} erreur(s) ou plus, sa journée n'est pas validée.
+          </p>
         </CardContent>
       </Card>
 

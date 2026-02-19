@@ -36,6 +36,7 @@ interface RamadanDayDialogProps {
   quizzes: Quiz[];
   quizCompleted: boolean;
   videoWatched: boolean;
+  maxErrors?: number;
   onMarkVideoWatched: () => void;
   onSubmitQuiz: (allCorrect: boolean, wrongCount: number) => void;
   onSaveQuizResponse: (quizId: string, selectedOption: number, attemptNumber: number, isCorrect: boolean) => void;
@@ -53,6 +54,7 @@ const RamadanDayDialog = ({
   quizzes,
   quizCompleted,
   videoWatched,
+  maxErrors = 3,
   onMarkVideoWatched,
   onSubmitQuiz,
   onSaveQuizResponse,
@@ -179,7 +181,7 @@ const RamadanDayDialog = ({
       const allCorrect = wrongCount === 0;
       const newWrongCount = wrongCount; // capture current value
 
-      if (newWrongCount >= 3) {
+      if (newWrongCount >= maxErrors) {
         // Échec : trop d'erreurs, bloque la validation
         setStep('failed');
         onSubmitQuiz(false, newWrongCount); // ne valide pas
@@ -190,7 +192,7 @@ const RamadanDayDialog = ({
         setTimeout(() => fireConfetti(), 500);
         onSubmitQuiz(true, 0);
       } else {
-        // Réussi (< 3 erreurs mais pas parfait)
+        // Réussi (< maxErrors erreurs mais pas parfait)
         onSubmitQuiz(allCorrect, newWrongCount);
       }
     } else {
@@ -306,7 +308,7 @@ const RamadanDayDialog = ({
                 Oups ! 😕
               </h3>
               <p className="text-sm font-medium text-destructive">
-                Tu as fait {wrongCount} erreur{wrongCount > 1 ? 's' : ''} lors de ce quiz.
+                Tu as fait {wrongCount} erreur{wrongCount > 1 ? 's' : ''} — le seuil est de {maxErrors} erreur{maxErrors > 1 ? 's' : ''} maximum.
               </p>
               <div className="p-4 rounded-xl bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 text-left space-y-2">
                 <p className="text-sm text-orange-700 dark:text-orange-300 text-center">
@@ -462,6 +464,55 @@ const RamadanDayDialog = ({
             <div ref={quizRef} className="space-y-4">
               {currentQuiz && (
                 <>
+                  {/* Benevolent error counter banner */}
+                  {(() => {
+                    const remaining = maxErrors - wrongCount - 1;
+                    let icon = '🌟';
+                    let msg = 'Allahouma barik ! Continue comme ça !';
+                    let bgClass = 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
+                    let textClass = 'text-green-700 dark:text-green-300';
+                    let iconColor = 'text-green-500';
+
+                    if (wrongCount === maxErrors - 2) {
+                      // 1 error before limit (e.g. 1 error if max=3)
+                      icon = '💪';
+                      msg = "C'est pas grave, reste concentré !";
+                      bgClass = 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800';
+                      textClass = 'text-amber-700 dark:text-amber-300';
+                      iconColor = 'text-amber-500';
+                    } else if (wrongCount === maxErrors - 1) {
+                      // 1 chance left before failure
+                      icon = '✨';
+                      msg = `Attention, encore 1 chance ! Tu peux le faire !`;
+                      bgClass = 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
+                      textClass = 'text-red-700 dark:text-red-300';
+                      iconColor = 'text-red-500';
+                    } else if (wrongCount === 0) {
+                      icon = '🌟';
+                      msg = 'Allahouma barik ! Continue comme ça !';
+                    }
+
+                    return (
+                      <div className={cn('flex items-center gap-2 px-3 py-2 rounded-xl border animate-fade-in', bgClass)}>
+                        <span className={cn('text-xl', iconColor)}>{icon}</span>
+                        <div className="flex-1">
+                          <p className={cn('text-xs font-semibold', textClass)}>{msg}</p>
+                        </div>
+                        <div className="flex gap-1">
+                          {Array.from({ length: maxErrors }).map((_, i) => (
+                            <div
+                              key={i}
+                              className={cn(
+                                'w-3 h-3 rounded-full transition-all duration-300',
+                                i < wrongCount ? 'bg-red-400 scale-110' : 'bg-muted'
+                              )}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Progress indicator */}
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span>Question {currentQuestionIdx + 1}/{totalQuestions}</span>

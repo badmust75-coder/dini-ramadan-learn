@@ -1,0 +1,1 @@
+ALTER TABLE public.ramadan_settings ADD COLUMN IF NOT EXISTS max_errors integer NOT NULL DEFAULT 3;

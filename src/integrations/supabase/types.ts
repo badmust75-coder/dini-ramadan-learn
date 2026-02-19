@@ -924,6 +924,7 @@ export type Database = {
       ramadan_settings: {
         Row: {
           id: string
+          max_errors: number
           start_enabled: boolean
           started_at: string | null
           updated_at: string
@@ -931,6 +932,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          max_errors?: number
           start_enabled?: boolean
           started_at?: string | null
           updated_at?: string
@@ -938,6 +940,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          max_errors?: number
           start_enabled?: boolean
           started_at?: string | null
           updated_at?: string

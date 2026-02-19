@@ -246,8 +246,9 @@ const Ramadan = () => {
 
   const handleQuizSubmit = (allCorrect: boolean, wrongCount: number) => {
     if (!openDay) return;
-    // Seuil : moins de 3 erreurs requis pour valider
-    if (wrongCount < 3) {
+    const maxErrors = (settings as any)?.max_errors ?? 3;
+    // Seuil : moins de maxErrors erreurs requis pour valider
+    if (wrongCount < maxErrors) {
       fireSuccess();
       markProgressMutation.mutate({ dayId: openDay.id, field: 'quiz_completed' });
       if (allCorrect) {
@@ -256,7 +257,7 @@ const Ramadan = () => {
         toast.success(`Bien joué ! ${wrongCount} erreur(s) seulement, journée validée ! 👍`);
       }
     }
-    // Si wrongCount >= 3, le dialog affiche déjà l'écran d'échec — pas de toast ici
+    // Si wrongCount >= maxErrors, le dialog affiche déjà l'écran d'échec — pas de toast ici
   };
 
   return (
@@ -380,6 +381,7 @@ const Ramadan = () => {
             quizzes={getQuizzesForDay(openDay.id)}
             quizCompleted={!!getDayProgress(openDay.id)?.quiz_completed}
             videoWatched={!!getDayProgress(openDay.id)?.video_watched}
+            maxErrors={(settings as any)?.max_errors ?? 3}
             onMarkVideoWatched={() => markProgressMutation.mutate({ dayId: openDay.id, field: 'video_watched' })}
             onSubmitQuiz={handleQuizSubmit}
             onSaveQuizResponse={(quizId, selectedOption, attemptNumber, isCorrect) => saveQuizResponseMutation.mutate({ quizId, selectedOption, attemptNumber, isCorrect })}
