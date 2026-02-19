@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, LogOut, Mail, Shield } from 'lucide-react';
+import { Home, LogOut, Mail, Shield, Trophy, CalendarCheck } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -91,8 +91,24 @@ const Header = ({
             </h1>
           </div>
 
-          {/* Right: Home, Admin (if admin), Logout */}
+          {/* Right: Classement, Présence, Home, Admin (if admin), Logout */}
           <div className="flex items-center gap-1">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate('/classement')} 
+              className="text-primary-foreground hover:bg-primary-foreground/10"
+            >
+              <Trophy className="h-5 w-5" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate('/attendance')} 
+              className="text-primary-foreground hover:bg-primary-foreground/10"
+            >
+              <CalendarCheck className="h-5 w-5" />
+            </Button>
             {!isHome && (
               <Button 
                 variant="ghost" 

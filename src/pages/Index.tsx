@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Moon, BookOpen, Hand, BookMarked, Sparkles, Trophy } from 'lucide-react';
+import { Moon, BookOpen, Hand, BookMarked, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
@@ -198,20 +198,6 @@ const Index = () => {
               );
             })}
           </div>
-
-          {/* Classement Button */}
-          <button
-            onClick={() => navigate('/classement')}
-            className="w-full module-card rounded-2xl p-4 flex items-center gap-4 animate-slide-up"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-secondary via-secondary to-secondary/80 flex items-center justify-center shadow-lg">
-              <Trophy className="h-6 w-6 text-primary" />
-            </div>
-            <div className="text-left">
-              <h3 className="font-bold text-foreground text-lg">Classement</h3>
-              <p className="text-xs text-muted-foreground">Découvre ta position parmi les élèves !</p>
-            </div>
-          </button>
 
           {/* Quick Stats */}
           <div className="bg-card rounded-2xl p-4 shadow-card border border-border animate-fade-in">
