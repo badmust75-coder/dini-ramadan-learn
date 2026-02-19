@@ -19,6 +19,9 @@ import NotFound from "./pages/NotFound";
 import PendingApproval from "./pages/PendingApproval";
 import Attendance from "./pages/Attendance";
 import DynamicModule from "./pages/DynamicModule";
+import AlphabetPage from "./pages/AlphabetPage";
+import AllahNamesPage from "./pages/AllahNamesPage";
+import GenericModulePage from "./pages/GenericModulePage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -53,7 +56,7 @@ const AppRoutes = () => {
       <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
       <Route path="/sourates" element={<ProtectedRoute><Sourates /></ProtectedRoute>} />
       <Route path="/ramadan" element={<ProtectedRoute><Ramadan /></ProtectedRoute>} />
-      <Route path="/alphabet" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+      <Route path="/alphabet" element={<ProtectedRoute><AlphabetPage /></ProtectedRoute>} />
       <Route path="/invocations" element={<ProtectedRoute><Invocations /></ProtectedRoute>} />
       <Route path="/nourania" element={<ProtectedRoute><Nourania /></ProtectedRoute>} />
       <Route path="/priere" element={<ProtectedRoute><Priere /></ProtectedRoute>} />
@@ -62,7 +65,8 @@ const AppRoutes = () => {
       <Route path="/classement" element={<ProtectedRoute><Classement /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
-      <Route path="/module/:moduleId" element={<ProtectedRoute><DynamicModule /></ProtectedRoute>} />
+      <Route path="/module/allah-names" element={<ProtectedRoute><AllahNamesPage /></ProtectedRoute>} />
+      <Route path="/module/:moduleId" element={<ProtectedRoute><GenericModulePage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

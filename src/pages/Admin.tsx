@@ -15,6 +15,8 @@ import AdminSourateContent from '@/components/admin/AdminSourateContent';
 import AdminAlphabetContent from '@/components/admin/AdminAlphabetContent';
 import AdminInvocationContent from '@/components/admin/AdminInvocationContent';
 import AdminInvocationManager from '@/components/admin/AdminInvocationManager';
+import AdminGenericModuleManager from '@/components/admin/AdminGenericModuleManager';
+import AdminAllahNamesManager from '@/components/admin/AdminAllahNamesManager';
 import AdminSourateValidations from '@/components/admin/AdminSourateValidations';
 import AdminRegistrationValidations from '@/components/admin/AdminRegistrationValidations';
 import AdminNouraniaValidations from '@/components/admin/AdminNouraniaValidations';
@@ -64,7 +66,9 @@ const ICON_MAP: Record<string, LucideIcon> = {
   FileText, List, Video, BookOpen, Star, Heart, Bell, Calendar, Image, Music,
 };
 
-type ViewType = 'dashboard' | 'users' | 'students' | 'ramadan' | 'ramadan-manage' | 'ramadan-quiz-tracking' | 'nourania' | 'nourania-manage' | 'nourania-validations' | 'alphabet' | 'alphabet-manage' | 'invocations' | 'invocations-manage' | 'sourates' | 'sourates-manage' | 'sourates-validations' | 'registration-validations' | 'prayer' | 'messages' | 'dynamic-card-content' | 'homework' | 'attendance' | 'modules';
+type ViewType = 'dashboard' | 'users' | 'students' | 'ramadan' | 'ramadan-manage' | 'ramadan-quiz-tracking' | 'nourania' | 'nourania-manage' | 'nourania-validations' | 'alphabet' | 'alphabet-manage' | 'invocations' | 'invocations-manage' | 'sourates' | 'sourates-manage' | 'sourates-validations' | 'registration-validations' | 'prayer' | 'messages' | 'dynamic-card-content' | 'homework' | 'attendance' | 'modules' | 'allah-names-manage' | 'generic-module-manage';
+
+interface GenericModuleManageState { moduleId: string; moduleTitle: string; }
 
 interface CardItem {
   id: string;
@@ -110,6 +114,7 @@ const Admin = () => {
   const [deleteCardOpen, setDeleteCardOpen] = useState(false);
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
   const [selectedDynamicCard, setSelectedDynamicCard] = useState<any>(null);
+  const [genericModuleManage, setGenericModuleManage] = useState<GenericModuleManageState | null>(null);
 
   // Fetch pending validation count
   const { data: pendingValidations } = useQuery({
@@ -343,6 +348,7 @@ const Admin = () => {
   const handleBack = () => {
     setCurrentView('dashboard');
     setSelectedDynamicCard(null);
+    setGenericModuleManage(null);
   };
 
   // Sub-view rendering
@@ -362,6 +368,8 @@ const Admin = () => {
   if (currentView === 'attendance') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminAttendance onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'modules') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminModules onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'dynamic-card-content' && selectedDynamicCard) return <AppLayout title="Tableau de bord"><div className="p-4"><AdminDynamicCardContent card={selectedDynamicCard} onBack={handleBack} /></div></AppLayout>;
+  if (currentView === 'allah-names-manage') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminAllahNamesManager onBack={handleBack} /></div></AppLayout>;
+  if (currentView === 'generic-module-manage' && genericModuleManage) return <AppLayout title="Tableau de bord"><div className="p-4"><AdminGenericModuleManager moduleId={genericModuleManage.moduleId} moduleTitle={genericModuleManage.moduleTitle} onBack={handleBack} /></div></AppLayout>;
 
   if (['ramadan', 'nourania', 'alphabet', 'invocations', 'sourates', 'prayer'].includes(currentView)) {
     return (
@@ -523,11 +531,23 @@ const Admin = () => {
                               <DropdownMenuItem onClick={() => { setEditingCard(dynCard); setCardDialogOpen(true); }}>
                                 <Pencil className="h-4 w-4 mr-2" /> Modifier
                               </DropdownMenuItem>
+                              {dynCard.title === "99 Noms d'Allah" ? (
+                                <DropdownMenuItem onClick={() => setCurrentView('allah-names-manage')}>
+                                  <Settings className="h-4 w-4 mr-2" /> Gérer les cartes
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem onClick={() => {
+                                  setGenericModuleManage({ moduleId: dynCard.id, moduleTitle: dynCard.title });
+                                  setCurrentView('generic-module-manage');
+                                }}>
+                                  <Settings className="h-4 w-4 mr-2" /> Gérer les cartes
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem onClick={() => {
                                 setSelectedDynamicCard(dynCard);
                                 setCurrentView('dynamic-card-content');
                               }}>
-                                <FileText className="h-4 w-4 mr-2" /> Gérer le contenu
+                                <FileText className="h-4 w-4 mr-2" /> Gérer les fichiers
                               </DropdownMenuItem>
                               <DropdownMenuItem className="text-destructive" onClick={() => { setCardToDelete(dynCard.id); setDeleteCardOpen(true); }}>
                                 <Trash2 className="h-4 w-4 mr-2" /> Supprimer

@@ -35,6 +35,39 @@ export type Database = {
         }
         Relationships: []
       }
+      allah_names: {
+        Row: {
+          created_at: string
+          display_order: number
+          explanation: string | null
+          id: number
+          image_url: string | null
+          name_arabic: string
+          name_french: string
+          transliteration: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          explanation?: string | null
+          id?: never
+          image_url?: string | null
+          name_arabic: string
+          name_french: string
+          transliteration?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          explanation?: string | null
+          id?: never
+          image_url?: string | null
+          name_arabic?: string
+          name_french?: string
+          transliteration?: string | null
+        }
+        Relationships: []
+      }
       alphabet_content: {
         Row: {
           content_type: string
@@ -429,6 +462,86 @@ export type Database = {
           is_builtin?: boolean
           title?: string
           title_arabic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      module_card_content: {
+        Row: {
+          card_id: string
+          content_type: string
+          created_at: string
+          display_order: number
+          file_name: string
+          file_url: string
+          id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          card_id: string
+          content_type: string
+          created_at?: string
+          display_order?: number
+          file_name: string
+          file_url: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          card_id?: string
+          content_type?: string
+          created_at?: string
+          display_order?: number
+          file_name?: string
+          file_url?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_card_content_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "module_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      module_cards: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          image_url: string | null
+          module_id: string
+          section: string | null
+          title: string
+          title_arabic: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          module_id: string
+          section?: string | null
+          title: string
+          title_arabic?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          module_id?: string
+          section?: string | null
+          title?: string
+          title_arabic?: string | null
           updated_at?: string
         }
         Relationships: []
