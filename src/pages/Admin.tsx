@@ -22,13 +22,14 @@ import AdminDynamicCardContent from '@/components/admin/AdminDynamicCardContent'
 import AdminRamadanQuizTracking from '@/components/admin/AdminRamadanQuizTracking';
 import AdminHomework from '@/components/admin/AdminHomework';
 import AdminAttendance from '@/components/admin/AdminAttendance';
+import AdminModules from '@/components/admin/AdminModules';
 import ConfirmDeleteDialog from '@/components/ui/confirm-delete-dialog';
 import { 
   Users, GraduationCap, Moon, Sparkles, BookOpen, MessageSquare, 
   BookMarked, Hand, Settings, Mail, ClipboardCheck, UserCheck,
   Plus, GripVertical, MoreVertical, Pencil, Trash2,
   FileText, List, Video, Star, Heart, Bell, Calendar, Image, Music,
-  ClipboardList
+  ClipboardList, LayoutGrid
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,7 +63,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   FileText, List, Video, BookOpen, Star, Heart, Bell, Calendar, Image, Music,
 };
 
-type ViewType = 'dashboard' | 'users' | 'students' | 'ramadan' | 'ramadan-manage' | 'ramadan-quiz-tracking' | 'nourania' | 'nourania-manage' | 'nourania-validations' | 'alphabet' | 'alphabet-manage' | 'invocations' | 'invocations-manage' | 'sourates' | 'sourates-manage' | 'sourates-validations' | 'registration-validations' | 'prayer' | 'messages' | 'dynamic-card-content' | 'homework' | 'attendance';
+type ViewType = 'dashboard' | 'users' | 'students' | 'ramadan' | 'ramadan-manage' | 'ramadan-quiz-tracking' | 'nourania' | 'nourania-manage' | 'nourania-validations' | 'alphabet' | 'alphabet-manage' | 'invocations' | 'invocations-manage' | 'sourates' | 'sourates-manage' | 'sourates-validations' | 'registration-validations' | 'prayer' | 'messages' | 'dynamic-card-content' | 'homework' | 'attendance' | 'modules';
 
 interface CardItem {
   id: string;
@@ -239,6 +240,7 @@ const Admin = () => {
     { key: 'prayer', title: 'Prière', icon: Hand, value: `${stats?.prayer || 0} catégories`, subtitle: 'Progression par élève', color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-900/30', cardBgColor: 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800', view: 'prayer' as ViewType },
     { key: 'homework', title: 'Cahier de texte', icon: ClipboardList, value: 'Gérer', subtitle: 'Devoirs par élève', color: 'text-lime-600 dark:text-lime-400', bgColor: 'bg-lime-100 dark:bg-lime-900/30', cardBgColor: 'bg-lime-50/50 dark:bg-lime-950/20 border-lime-200 dark:border-lime-800', view: 'homework' as ViewType },
     { key: 'attendance', title: 'Registre de Présence', icon: ClipboardCheck, value: 'Gérer', subtitle: 'Suivi par séance', color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-900/30', cardBgColor: 'bg-cyan-50/50 dark:bg-cyan-950/20 border-cyan-200 dark:border-cyan-800', view: 'attendance' as ViewType },
+    { key: 'modules', title: "Modules d'accueil", icon: LayoutGrid, value: 'Gérer', subtitle: 'Ordre, images, contenu', color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-900/30', cardBgColor: 'bg-violet-50/50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800', view: 'modules' as ViewType },
   ], [stats]);
 
   // Combine static + dynamic cards with ordering
@@ -357,6 +359,7 @@ const Admin = () => {
   if (currentView === 'messages') return <AppLayout title="Tableau de bord"><div className="p-4"><Button variant="ghost" onClick={handleBack} className="mb-4">← Retour</Button><AdminMessaging /></div></AppLayout>;
   if (currentView === 'homework') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminHomework onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'attendance') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminAttendance onBack={handleBack} /></div></AppLayout>;
+  if (currentView === 'modules') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminModules onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'dynamic-card-content' && selectedDynamicCard) return <AppLayout title="Tableau de bord"><div className="p-4"><AdminDynamicCardContent card={selectedDynamicCard} onBack={handleBack} /></div></AppLayout>;
 
   if (['ramadan', 'nourania', 'alphabet', 'invocations', 'sourates', 'prayer'].includes(currentView)) {

@@ -17,6 +17,7 @@ import Classement from "./pages/Classement";
 import NotFound from "./pages/NotFound";
 import PendingApproval from "./pages/PendingApproval";
 import Attendance from "./pages/Attendance";
+import DynamicModule from "./pages/DynamicModule";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,7 @@ const AppRoutes = () => {
       <Route path="/classement" element={<ProtectedRoute><Classement /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
+      <Route path="/module/:moduleId" element={<ProtectedRoute><DynamicModule /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

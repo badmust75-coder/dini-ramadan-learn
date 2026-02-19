@@ -376,6 +376,101 @@ export type Database = {
         }
         Relationships: []
       }
+      learning_modules: {
+        Row: {
+          builtin_path: string | null
+          created_at: string
+          description: string | null
+          display_order: number
+          gradient: string
+          icon: string
+          icon_color: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          is_builtin: boolean
+          title: string
+          title_arabic: string
+          updated_at: string
+        }
+        Insert: {
+          builtin_path?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          gradient?: string
+          icon?: string
+          icon_color?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          is_builtin?: boolean
+          title: string
+          title_arabic?: string
+          updated_at?: string
+        }
+        Update: {
+          builtin_path?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          gradient?: string
+          icon?: string
+          icon_color?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          is_builtin?: boolean
+          title?: string
+          title_arabic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      module_content: {
+        Row: {
+          content_type: string
+          created_at: string
+          display_order: number
+          file_name: string
+          file_url: string
+          id: string
+          module_id: string
+          title: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          display_order?: number
+          file_name: string
+          file_url: string
+          id?: string
+          module_id: string
+          title: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          display_order?: number
+          file_name?: string
+          file_url?: string
+          id?: string
+          module_id?: string
+          title?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_content_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "learning_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_preferences: {
         Row: {
           asr_reminder: boolean

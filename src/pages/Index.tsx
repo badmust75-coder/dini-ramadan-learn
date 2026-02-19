@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Moon, BookOpen, Hand, BookMarked, Sparkles } from 'lucide-react';
+import { Moon, BookOpen, Hand, BookMarked, Sparkles, MessageSquare, Star, Music, Video, FileText, Image } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
@@ -9,85 +9,31 @@ import HomeworkCard from '@/components/homework/HomeworkCard';
 import WelcomeNameDialog from '@/components/auth/WelcomeNameDialog';
 import { useUserProgress } from '@/hooks/useUserProgress';
 import { cn } from '@/lib/utils';
-interface ModuleCard {
-  id: string;
-  icon: React.ElementType;
-  title: string;
-  titleArabic: string;
-  description: string;
-  path: string;
-  gradient: string;
-  iconColor: string;
-}
+import { LucideIcon } from 'lucide-react';
 
-const modules: ModuleCard[] = [
-  {
-    id: 'ramadan',
-    icon: Moon,
-    title: 'Ramadan',
-    titleArabic: 'رمضان',
-    description: '30 jours de spiritualité',
-    path: '/ramadan',
-    gradient: 'from-primary via-royal-dark to-primary',
-    iconColor: 'text-gold',
-  },
-  {
-    id: 'alphabet',
-    icon: BookOpen,
-    title: 'Alphabet',
-    titleArabic: 'الأبجدية',
-    description: '28 lettres arabes',
-    path: '/alphabet',
-    gradient: 'from-royal-light via-primary to-royal-dark',
-    iconColor: 'text-gold-light',
-  },
-  {
-    id: 'invocations',
-    icon: Hand,
-    title: 'Invocations',
-    titleArabic: 'الأدعية',
-    description: "Du'as quotidiennes",
-    path: '/invocations',
-    gradient: 'from-gold-dark via-gold to-gold-light',
-    iconColor: 'text-primary',
-  },
-  {
-    id: 'sourates',
-    icon: BookMarked,
-    title: 'Sourates',
-    titleArabic: 'السور',
-    description: '114 sourates du Coran',
-    path: '/sourates',
-    gradient: 'from-primary via-primary to-royal-light',
-    iconColor: 'text-gold',
-  },
-  {
-    id: 'nourania',
-    icon: Sparkles,
-    title: 'Nourania',
-    titleArabic: 'النورانية',
-    description: '17 leçons de tajweed',
-    path: '/nourania',
-    gradient: 'from-gold via-gold-dark to-gold',
-    iconColor: 'text-primary',
-  },
-  {
-    id: 'priere',
-    icon: Hand,
-    title: 'Prière',
-    titleArabic: 'الصلاة',
-    description: 'Ablutions et prières',
-    path: '/priere',
-    gradient: 'from-royal-dark via-primary to-royal-light',
-    iconColor: 'text-gold',
-  },
-];
+const ICON_MAP: Record<string, LucideIcon> = {
+  Moon, BookOpen, Hand, BookMarked, Sparkles, MessageSquare, Star, Music, Video, FileText, Image,
+};
 
 const Index = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const { data: progress } = useUserProgress();
+
+  // Fetch modules from DB
+  const { data: modules } = useQuery({
+    queryKey: ['learning-modules'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('learning_modules')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order');
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
   // Fetch user profile to check if name is set
   const { data: profile, isLoading: profileLoading } = useQuery({
@@ -119,6 +65,14 @@ const Index = () => {
     setShowWelcomeDialog(false);
   };
 
+  const handleModuleClick = (mod: any) => {
+    if (mod.is_builtin && mod.builtin_path) {
+      navigate(mod.builtin_path);
+    } else {
+      navigate(`/module/${mod.id}`);
+    }
+  };
+
   return (
     <>
       <WelcomeNameDialog open={showWelcomeDialog} onComplete={handleWelcomeComplete} />
@@ -138,19 +92,19 @@ const Index = () => {
           {/* Homework Card */}
           <HomeworkCard />
 
-          {/* Module Cards Grid */}
+          {/* Module Cards Grid - Dynamic from DB */}
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-            {modules.map((module, index) => {
-              const Icon = module.icon;
+            {(modules || []).map((mod, index) => {
+              const Icon = ICON_MAP[mod.icon] || BookOpen;
               return (
-                <div key={module.id} className="flex flex-col items-center">
+                <div key={mod.id} className="flex flex-col items-center">
                   <button
-                    onClick={() => navigate(module.path)}
+                    onClick={() => handleModuleClick(mod)}
                     className={cn(
                       'module-card relative overflow-hidden rounded-2xl p-4 text-left w-full',
                       'flex flex-col items-center justify-center min-h-[160px]',
                       'animate-slide-up',
-                      `stagger-${index + 1}`
+                      `stagger-${(index % 6) + 1}`
                     )}
                     style={{ animationFillMode: 'both' }}
                   >
@@ -158,31 +112,35 @@ const Index = () => {
                     <div
                       className={cn(
                         'absolute inset-0 opacity-10 bg-gradient-to-br',
-                        module.gradient
+                        mod.gradient
                       )}
                     />
 
-                    {/* Icon */}
+                    {/* Icon or Image */}
                     <div className="relative z-10 mb-3">
-                      <div className={cn(
-                        'w-14 h-14 rounded-2xl flex items-center justify-center',
-                        'bg-gradient-to-br shadow-lg',
-                        module.gradient
-                      )}>
-                        <Icon className={cn('h-7 w-7', module.iconColor)} />
-                      </div>
+                      {mod.image_url ? (
+                        <img src={mod.image_url} alt={mod.title} className="w-14 h-14 rounded-2xl object-cover shadow-lg" />
+                      ) : (
+                        <div className={cn(
+                          'w-14 h-14 rounded-2xl flex items-center justify-center',
+                          'bg-gradient-to-br shadow-lg',
+                          mod.gradient
+                        )}>
+                          <Icon className={cn('h-7 w-7', mod.icon_color)} />
+                        </div>
+                      )}
                     </div>
 
                     {/* Text */}
                     <div className="relative z-10 text-center">
                       <p className="font-arabic text-lg text-muted-foreground mb-1">
-                        {module.titleArabic}
+                        {mod.title_arabic}
                       </p>
                       <h3 className="font-bold text-foreground text-lg">
-                        {module.title}
+                        {mod.title}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {module.description}
+                        {mod.description}
                       </p>
                     </div>
 
@@ -190,7 +148,7 @@ const Index = () => {
                     <div className="absolute top-0 right-0 w-16 h-16 opacity-5">
                       <div className={cn(
                         'absolute inset-0 bg-gradient-to-br rounded-bl-full',
-                        module.gradient
+                        mod.gradient
                       )} />
                     </div>
                   </button>
