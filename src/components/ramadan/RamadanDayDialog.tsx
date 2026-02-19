@@ -113,6 +113,45 @@ const RamadanDayDialog = ({
     };
   }, []);
 
+  // ── Sound effects (Web Audio API, no external files) ──────────────────
+  const playDing = () => {
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.05);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.65);
+      osc.onended = () => ctx.close();
+    } catch (_) { /* silently ignore if audio not supported */ }
+  };
+
+  const playBoing = () => {
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(350, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.45);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.6);
+      osc.onended = () => ctx.close();
+    } catch (_) { /* silently ignore */ }
+  };
+  // ────────────────────────────────────────────────────────────────────────
+
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) resetState();
     onOpenChange(isOpen);
@@ -235,6 +274,7 @@ const RamadanDayDialog = ({
     const primarySelected = selectedAnswers[0];
 
     if (isCorrect) {
+      playDing();
       if (currentAttempt === 1) {
         setAnswerResult('correct');
         setCorrectCount(prev => prev + 1);
@@ -247,6 +287,7 @@ const RamadanDayDialog = ({
       setShowExplanation(true);
       autoAdvanceTimerRef.current = setTimeout(() => advanceToNextQuestion(), 4000);
     } else {
+      playBoing();
       if (currentAttempt === 1) {
         setAnswerResult('wrong-first');
         onSaveQuizResponse(currentQuiz.id, primarySelected, 1, false);
