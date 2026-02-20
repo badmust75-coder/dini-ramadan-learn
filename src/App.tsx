@@ -22,6 +22,7 @@ import DynamicModule from "./pages/DynamicModule";
 import AlphabetPage from "./pages/AlphabetPage";
 import AllahNamesPage from "./pages/AllahNamesPage";
 import GenericModulePage from "./pages/GenericModulePage";
+import GrammaireConjugaisonPage from "./pages/GrammaireConjugaisonPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -66,6 +67,7 @@ const AppRoutes = () => {
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
       <Route path="/module/allah-names" element={<ProtectedRoute><AllahNamesPage /></ProtectedRoute>} />
+      <Route path="/grammaire" element={<ProtectedRoute><GrammaireConjugaisonPage /></ProtectedRoute>} />
       <Route path="/module/:moduleId" element={<ProtectedRoute><GenericModulePage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -67,7 +67,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   FileText, List, Video, BookOpen, Star, Heart, Bell, Calendar, Image, Music,
 };
 
-type ViewType = 'dashboard' | 'users' | 'students' | 'ramadan' | 'ramadan-manage' | 'ramadan-quiz-tracking' | 'nourania' | 'nourania-manage' | 'nourania-validations' | 'alphabet' | 'alphabet-manage' | 'invocations' | 'invocations-manage' | 'sourates' | 'sourates-manage' | 'sourates-validations' | 'registration-validations' | 'prayer' | 'messages' | 'dynamic-card-content' | 'homework' | 'attendance' | 'modules' | 'allah-names-manage' | 'generic-module-manage';
+type ViewType = 'dashboard' | 'users' | 'students' | 'ramadan' | 'ramadan-manage' | 'ramadan-quiz-tracking' | 'nourania' | 'nourania-manage' | 'nourania-validations' | 'alphabet' | 'alphabet-manage' | 'invocations' | 'invocations-manage' | 'sourates' | 'sourates-manage' | 'sourates-validations' | 'registration-validations' | 'prayer' | 'messages' | 'dynamic-card-content' | 'homework' | 'attendance' | 'modules' | 'allah-names-manage' | 'generic-module-manage' | 'grammaire-manage';
 
 interface GenericModuleManageState { moduleId: string; moduleTitle: string; }
 
@@ -260,6 +260,7 @@ const Admin = () => {
     { key: 'invocations', title: 'Invocations', icon: MessageSquare, value: `${stats?.invocations || 0} disponibles`, subtitle: 'Progression par élève', color: 'text-teal-600 dark:text-teal-400', bgColor: 'bg-teal-100 dark:bg-teal-900/30', cardBgColor: 'bg-teal-50/50 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800', view: 'invocations' as ViewType, manageView: 'invocations-manage' as ViewType },
     { key: 'sourates', title: 'Sourates', icon: BookMarked, value: `${stats?.sourates || 0} sourates`, subtitle: 'Progression par élève', color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-100 dark:bg-indigo-900/30', cardBgColor: 'bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800', view: 'sourates' as ViewType, manageView: 'sourates-manage' as ViewType },
     { key: 'prayer', title: 'Prière', icon: Hand, value: `${stats?.prayer || 0} catégories`, subtitle: 'Progression par élève', color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-100 dark:bg-rose-900/30', cardBgColor: 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800', view: 'prayer' as ViewType },
+    { key: 'grammaire', title: 'Grammaire & Conjugaison', icon: BookOpen, value: 'Gérer', subtitle: 'Règles et leçons', color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-900/30', cardBgColor: 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800', view: 'grammaire-manage' as ViewType },
     { key: 'homework', title: 'Cahier de texte', icon: ClipboardList, value: 'Gérer', subtitle: 'Devoirs par élève', color: 'text-lime-600 dark:text-lime-400', bgColor: 'bg-lime-100 dark:bg-lime-900/30', cardBgColor: 'bg-lime-50/50 dark:bg-lime-950/20 border-lime-200 dark:border-lime-800', view: 'homework' as ViewType },
     { key: 'attendance', title: 'Registre de Présence', icon: ClipboardCheck, value: 'Gérer', subtitle: 'Suivi par séance', color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-100 dark:bg-cyan-900/30', cardBgColor: 'bg-cyan-50/50 dark:bg-cyan-950/20 border-cyan-200 dark:border-cyan-800', view: 'attendance' as ViewType },
   ], [stats]);
@@ -400,6 +401,12 @@ const Admin = () => {
   if (currentView === 'dynamic-card-content' && selectedDynamicCard) return <AppLayout title="Tableau de bord"><div className="p-4"><AdminDynamicCardContent card={selectedDynamicCard} onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'allah-names-manage') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminAllahNamesManager onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'generic-module-manage' && genericModuleManage) return <AppLayout title="Tableau de bord"><div className="p-4"><AdminGenericModuleManager moduleId={genericModuleManage.moduleId} moduleTitle={genericModuleManage.moduleTitle} onBack={handleBack} /></div></AppLayout>;
+  if (currentView === 'grammaire-manage') {
+    const grammaireModule = learningModules?.find(m => m.builtin_path === '/grammaire');
+    if (grammaireModule) {
+      return <AppLayout title="Tableau de bord"><div className="p-4"><AdminGenericModuleManager moduleId={grammaireModule.id} moduleTitle="Grammaire & Conjugaison" onBack={handleBack} /></div></AppLayout>;
+    }
+  }
 
   if (['ramadan', 'nourania', 'alphabet', 'invocations', 'sourates', 'prayer'].includes(currentView)) {
     return (
