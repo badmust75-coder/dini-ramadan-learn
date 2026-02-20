@@ -23,6 +23,7 @@ import AlphabetPage from "./pages/AlphabetPage";
 import AllahNamesPage from "./pages/AllahNamesPage";
 import GenericModulePage from "./pages/GenericModulePage";
 import GrammaireConjugaisonPage from "./pages/GrammaireConjugaisonPage";
+import GenericTimelinePage from "./pages/GenericTimelinePage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -67,7 +68,15 @@ const AppRoutes = () => {
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
       <Route path="/module/allah-names" element={<ProtectedRoute><AllahNamesPage /></ProtectedRoute>} />
+      <Route path="/allah-names" element={<ProtectedRoute><AllahNamesPage /></ProtectedRoute>} />
       <Route path="/grammaire" element={<ProtectedRoute><GrammaireConjugaisonPage /></ProtectedRoute>} />
+      <Route path="/module/vocabulaire" element={<ProtectedRoute><GenericTimelinePage /></ProtectedRoute>} />
+      <Route path="/module/lecture-coran" element={<ProtectedRoute><GenericTimelinePage /></ProtectedRoute>} />
+      <Route path="/module/darija" element={<ProtectedRoute><GenericTimelinePage /></ProtectedRoute>} />
+      <Route path="/module/dictionnaire" element={<ProtectedRoute><GenericTimelinePage /></ProtectedRoute>} />
+      <Route path="/module/dhikr" element={<ProtectedRoute><GenericTimelinePage /></ProtectedRoute>} />
+      <Route path="/module/hadiths" element={<ProtectedRoute><GenericTimelinePage /></ProtectedRoute>} />
+      <Route path="/module/histoires-prophetes" element={<ProtectedRoute><GenericTimelinePage /></ProtectedRoute>} />
       <Route path="/module/:moduleId" element={<ProtectedRoute><GenericModulePage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
