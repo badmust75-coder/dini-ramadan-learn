@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Moon, BookOpen, Hand, BookMarked, Sparkles, MessageSquare, Star, Music, Video, FileText, Image, Heart, List, Scroll, Users } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Moon, BookOpen, Hand, BookMarked, Sparkles, MessageSquare, Star, Music, Video, FileText, Image, Heart, List, Scroll, Users, MoreVertical, EyeOff, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
@@ -10,6 +10,10 @@ import WelcomeNameDialog from '@/components/auth/WelcomeNameDialog';
 import { useUserProgress } from '@/hooks/useUserProgress';
 import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const ICON_MAP: Record<string, LucideIcon> = {
   Moon, BookOpen, Hand, BookMarked, Sparkles, MessageSquare, Star, Music, Video, FileText, Image, Heart, List, Scroll, Users,
@@ -17,22 +21,34 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
 const Index = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const queryClient = useQueryClient();
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const { data: progress } = useUserProgress();
 
-  // Fetch modules from DB
+  // Fetch modules from DB — admins see all, users see active only
   const { data: modules } = useQuery({
-    queryKey: ['learning-modules'],
+    queryKey: ['learning-modules', isAdmin],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('learning_modules')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order');
+      let query = supabase.from('learning_modules').select('*').order('display_order');
+      if (!isAdmin) query = query.eq('is_active', true);
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
+  });
+
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      const { error } = await supabase.from('learning_modules').update({ is_active }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_, { is_active }) => {
+      queryClient.invalidateQueries({ queryKey: ['learning-modules'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-learning-modules'] });
+      toast.success(is_active ? 'Module affiché aux élèves' : 'Module masqué aux élèves');
+    },
+    onError: () => toast.error('Erreur lors de la mise à jour'),
   });
 
   // Fetch user profile to check if name is set
@@ -97,14 +113,15 @@ const Index = () => {
             {(modules || []).map((mod, index) => {
               const Icon = ICON_MAP[mod.icon] || BookOpen;
               return (
-                <div key={mod.id} className="flex flex-col items-center">
+                <div key={mod.id} className="flex flex-col items-center relative">
                   <button
                     onClick={() => handleModuleClick(mod)}
                     className={cn(
                       'module-card relative overflow-hidden rounded-2xl p-4 text-left w-full',
                       'flex flex-col items-center justify-center min-h-[160px]',
                       'animate-slide-up',
-                      `stagger-${(index % 6) + 1}`
+                      `stagger-${(index % 6) + 1}`,
+                      !mod.is_active && isAdmin && 'opacity-50 grayscale'
                     )}
                     style={{ animationFillMode: 'both' }}
                   >
@@ -115,6 +132,13 @@ const Index = () => {
                         mod.gradient
                       )}
                     />
+
+                    {/* Hidden badge for admin */}
+                    {isAdmin && !mod.is_active && (
+                      <div className="absolute top-2 left-2 z-20 bg-destructive/80 text-white text-[9px] px-1.5 py-0.5 rounded font-medium">
+                        Masqué
+                      </div>
+                    )}
 
                     {/* Icon or Image */}
                     <div className="relative z-10 mb-3">
@@ -152,6 +176,35 @@ const Index = () => {
                       )} />
                     </div>
                   </button>
+
+                  {/* Admin 3-dot menu */}
+                  {isAdmin && (
+                    <div className="absolute top-2 right-2 z-20">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-7 h-7 rounded-full bg-background/80 backdrop-blur-sm border border-border flex items-center justify-center hover:bg-muted transition-colors shadow-sm"
+                          >
+                            <MoreVertical className="h-3.5 w-3.5 text-foreground" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleActiveMutation.mutate({ id: mod.id, is_active: !mod.is_active });
+                            }}
+                          >
+                            {mod.is_active
+                              ? <><EyeOff className="h-4 w-4 mr-2 text-destructive" /><span className="text-destructive">Masquer aux élèves</span></>
+                              : <><Eye className="h-4 w-4 mr-2 text-green-600" /><span className="text-green-600">Afficher aux élèves</span></>
+                            }
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
                 </div>
               );
             })}
