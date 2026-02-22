@@ -451,28 +451,6 @@ const Admin = () => {
 
         {/* Validation cards at top (NOT sortable) */}
         <button
-          onClick={() => setCurrentView('sourates-validations')}
-          className={`w-full rounded-2xl p-4 shadow-card border transition-all duration-300 ${
-            pendingCount > 0 ? 'bg-red-500/10 border-red-300 dark:border-red-700 hover:bg-red-500/20' : 'bg-green-500/10 border-green-300 dark:border-green-700 hover:bg-green-500/20'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${pendingCount > 0 ? 'bg-red-500/20' : 'bg-green-500/20'}`}>
-                <ClipboardCheck className={`h-6 w-6 ${pendingCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`} />
-              </div>
-              <div className="text-left">
-                <p className={`font-bold text-base ${pendingCount > 0 ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}`}>Validations en attente</p>
-                <p className={`text-sm ${pendingCount > 0 ? 'text-red-600/70 dark:text-red-400/70' : 'text-green-600/70 dark:text-green-400/70'}`}>
-                  {pendingCount > 0 ? 'Sourate(s) à valider' : 'Aucune validation en attente'}
-                </p>
-              </div>
-            </div>
-            {pendingCount > 0 && <Badge className="bg-red-500 text-white hover:bg-red-600 text-lg px-3 py-1 animate-pulse">{pendingCount}</Badge>}
-          </div>
-        </button>
-
-        <button
           onClick={() => setCurrentView('registration-validations')}
           className={`w-full rounded-2xl p-4 shadow-card border transition-all duration-300 ${
             pendingRegistrations > 0 ? 'bg-red-500/10 border-red-300 dark:border-red-700 hover:bg-red-500/20' : 'bg-green-500/10 border-green-300 dark:border-green-700 hover:bg-green-500/20'
@@ -491,6 +469,28 @@ const Admin = () => {
               </div>
             </div>
             {pendingRegistrations > 0 && <Badge className="bg-red-500 text-white hover:bg-red-600 text-lg px-3 py-1 animate-pulse">{pendingRegistrations}</Badge>}
+          </div>
+        </button>
+
+        <button
+          onClick={() => setCurrentView('sourates-validations')}
+          className={`w-full rounded-2xl p-4 shadow-card border transition-all duration-300 ${
+            pendingCount > 0 ? 'bg-red-500/10 border-red-300 dark:border-red-700 hover:bg-red-500/20' : 'bg-green-500/10 border-green-300 dark:border-green-700 hover:bg-green-500/20'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${pendingCount > 0 ? 'bg-red-500/20' : 'bg-green-500/20'}`}>
+                <ClipboardCheck className={`h-6 w-6 ${pendingCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`} />
+              </div>
+              <div className="text-left">
+                <p className={`font-bold text-base ${pendingCount > 0 ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}`}>Validation Sourates</p>
+                <p className={`text-sm ${pendingCount > 0 ? 'text-red-600/70 dark:text-red-400/70' : 'text-green-600/70 dark:text-green-400/70'}`}>
+                  {pendingCount > 0 ? 'Sourate(s) à valider' : 'Aucune validation en attente'}
+                </p>
+              </div>
+            </div>
+            {pendingCount > 0 && <Badge className="bg-red-500 text-white hover:bg-red-600 text-lg px-3 py-1 animate-pulse">{pendingCount}</Badge>}
           </div>
         </button>
 
