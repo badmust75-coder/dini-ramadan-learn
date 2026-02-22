@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Sun, Moon, CloudMoon, Home, Church, Plane, Shirt, Bath, UtensilsCrossed, CloudRain, Heart, BedDouble, Droplets, PawPrint, Activity, Hand, BookOpen, Loader2, Check, Video, FileText, Volume2, Image as ImageIcon, X } from 'lucide-react';
+import { Sun, Moon, CloudMoon, Home, Church, Plane, Shirt, Bath, UtensilsCrossed, CloudRain, Heart, BedDouble, Droplets, PawPrint, Activity, Hand, BookOpen, Loader2, Check, Video, FileText, Volume2, Image as ImageIcon, X, Send, Clock } from 'lucide-react';
 
 // Default icon mapping by title keyword
 const getDefaultIcon = (title: string) => {
@@ -55,12 +55,16 @@ interface InvocationDetailDialogProps {
   invocation: any;
   contents: any[];
   progress: any;
+  validationRequest: any;
   onClose: () => void;
   onMarkMemorized: (invocationId: number, isMemorized: boolean) => void;
+  onRequestValidation: (invocationId: number) => void;
+  isRequestingValidation: boolean;
 }
 
-const InvocationDetailDialog = ({ invocation, contents, progress, onClose, onMarkMemorized }: InvocationDetailDialogProps) => {
+const InvocationDetailDialog = ({ invocation, contents, progress, validationRequest, onClose, onMarkMemorized, onRequestValidation, isRequestingValidation }: InvocationDetailDialogProps) => {
   const isMemorized = progress?.is_memorized ?? false;
+  const isValidated = progress?.is_validated ?? false;
 
   const getContentIcon = (type: string) => {
     switch (type) {
@@ -157,6 +161,29 @@ const InvocationDetailDialog = ({ invocation, contents, progress, onClose, onMar
               <><Hand className="h-4 w-4" /> Marquer comme mémorisé</>
             )}
           </Button>
+
+          {/* Validation request button */}
+          {isValidated ? (
+            <div className="flex items-center justify-center gap-2 py-2 text-green-600 dark:text-green-400 font-medium">
+              <Check className="h-5 w-5" />
+              Validé par l'enseignant ✅
+            </div>
+          ) : validationRequest?.status === 'pending' ? (
+            <div className="flex items-center justify-center gap-2 py-2 text-amber-600 dark:text-amber-400 font-medium">
+              <Clock className="h-5 w-5" />
+              Validation en attente...
+            </div>
+          ) : (
+            <Button
+              className="w-full gap-2"
+              variant="outline"
+              onClick={() => onRequestValidation(invocation.id)}
+              disabled={isRequestingValidation}
+            >
+              <Send className="h-4 w-4" />
+              Demander la validation
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -206,6 +233,21 @@ const Invocations = () => {
     enabled: !!user,
   });
 
+  // Fetch validation requests
+  const { data: validationRequests = [] } = useQuery({
+    queryKey: ['user-invocation-validation-requests', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('invocation_validation_requests')
+        .select('*')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   const toggleMemorizedMutation = useMutation({
     mutationFn: async ({ invocationId, isMemorized }: { invocationId: number; isMemorized: boolean }) => {
       if (!user) throw new Error('Non connecté');
@@ -229,6 +271,21 @@ const Invocations = () => {
       toast.success(isMemorized ? '✅ Invocation mémorisée !' : 'Marqué comme non mémorisé');
     },
     onError: () => toast.error('Erreur lors de la mise à jour'),
+  });
+
+  const requestValidationMutation = useMutation({
+    mutationFn: async (invocationId: number) => {
+      if (!user) throw new Error('Non connecté');
+      const { error } = await supabase
+        .from('invocation_validation_requests')
+        .insert({ user_id: user.id, invocation_id: invocationId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-invocation-validation-requests', user?.id] });
+      toast.success('📩 Demande de validation envoyée !');
+    },
+    onError: () => toast.error('Erreur lors de l\'envoi de la demande'),
   });
 
   const memorizedCount = progress.filter((p: any) => p.is_memorized).length;
@@ -321,8 +378,11 @@ const Invocations = () => {
           invocation={selectedInvocation}
           contents={contents.filter((c: any) => c.invocation_id === selectedInvocation.id)}
           progress={progress.find((p: any) => p.invocation_id === selectedInvocation.id)}
+          validationRequest={validationRequests.find((r: any) => r.invocation_id === selectedInvocation.id && r.status === 'pending')}
           onClose={() => setSelectedInvocation(null)}
           onMarkMemorized={(id, mem) => toggleMemorizedMutation.mutate({ invocationId: id, isMemorized: mem })}
+          onRequestValidation={(id) => requestValidationMutation.mutate(id)}
+          isRequestingValidation={requestValidationMutation.isPending}
         />
       )}
     </AppLayout>
