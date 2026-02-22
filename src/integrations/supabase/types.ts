@@ -376,6 +376,44 @@ export type Database = {
           },
         ]
       }
+      invocation_validation_requests: {
+        Row: {
+          created_at: string
+          id: string
+          invocation_id: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invocation_id: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invocation_id?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invocation_validation_requests_invocation_id_fkey"
+            columns: ["invocation_id"]
+            isOneToOne: false
+            referencedRelation: "invocations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invocations: {
         Row: {
           audio_url: string | null

@@ -20,6 +20,7 @@ import AdminAllahNamesManager from '@/components/admin/AdminAllahNamesManager';
 import AdminSourateValidations from '@/components/admin/AdminSourateValidations';
 import AdminRegistrationValidations from '@/components/admin/AdminRegistrationValidations';
 import AdminNouraniaValidations from '@/components/admin/AdminNouraniaValidations';
+import AdminInvocationValidations from '@/components/admin/AdminInvocationValidations';
 import AdminDynamicCardDialog from '@/components/admin/AdminDynamicCardDialog';
 import AdminDynamicCardContent from '@/components/admin/AdminDynamicCardContent';
 import AdminRamadanQuizTracking from '@/components/admin/AdminRamadanQuizTracking';
@@ -67,7 +68,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   FileText, List, Video, BookOpen, Star, Heart, Bell, Calendar, Image, Music,
 };
 
-type ViewType = 'dashboard' | 'users' | 'students' | 'ramadan' | 'ramadan-manage' | 'ramadan-quiz-tracking' | 'nourania' | 'nourania-manage' | 'nourania-validations' | 'alphabet' | 'alphabet-manage' | 'invocations' | 'invocations-manage' | 'sourates' | 'sourates-manage' | 'sourates-validations' | 'registration-validations' | 'prayer' | 'messages' | 'dynamic-card-content' | 'homework' | 'attendance' | 'modules' | 'generic-module-manage' | 'grammaire-manage' | 'allah-names-manage' | 'vocabulaire-manage' | 'lecture-coran-manage' | 'darija-manage' | 'dictionnaire-manage' | 'dhikr-manage' | 'hadiths-manage' | 'histoires-prophetes-manage';
+type ViewType = 'dashboard' | 'users' | 'students' | 'ramadan' | 'ramadan-manage' | 'ramadan-quiz-tracking' | 'nourania' | 'nourania-manage' | 'nourania-validations' | 'alphabet' | 'alphabet-manage' | 'invocations' | 'invocations-manage' | 'invocations-validations' | 'sourates' | 'sourates-manage' | 'sourates-validations' | 'registration-validations' | 'prayer' | 'messages' | 'dynamic-card-content' | 'homework' | 'attendance' | 'modules' | 'generic-module-manage' | 'grammaire-manage' | 'allah-names-manage' | 'vocabulaire-manage' | 'lecture-coran-manage' | 'darija-manage' | 'dictionnaire-manage' | 'dhikr-manage' | 'hadiths-manage' | 'histoires-prophetes-manage';
 
 interface GenericModuleManageState { moduleId: string; moduleTitle: string; }
 
@@ -110,6 +111,7 @@ const Admin = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingRegistrations, setPendingRegistrations] = useState(0);
   const [pendingNourania, setPendingNourania] = useState(0);
+  const [pendingInvocations, setPendingInvocations] = useState(0);
   const [cardDialogOpen, setCardDialogOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<any>(null);
   const [deleteCardOpen, setDeleteCardOpen] = useState(false);
@@ -151,6 +153,19 @@ const Admin = () => {
     queryFn: async () => {
       const { count, error } = await supabase
         .from('nourania_validation_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
+  // Fetch pending invocation validation count
+  const { data: pendingInvocationsCount } = useQuery({
+    queryKey: ['admin-pending-invocations-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('invocation_validation_requests')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending');
       if (error) throw error;
@@ -200,6 +215,7 @@ const Admin = () => {
   useEffect(() => { setPendingCount(pendingValidations || 0); }, [pendingValidations]);
   useEffect(() => { setPendingRegistrations(pendingRegCount || 0); }, [pendingRegCount]);
   useEffect(() => { setPendingNourania(pendingNouraniaCount || 0); }, [pendingNouraniaCount]);
+  useEffect(() => { setPendingInvocations(pendingInvocationsCount || 0); }, [pendingInvocationsCount]);
 
   // Realtime subscription for pending count updates
   useEffect(() => {
@@ -216,6 +232,10 @@ const Admin = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'nourania_validation_requests' }, async () => {
         const { count } = await supabase.from('nourania_validation_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
         setPendingNourania(count || 0);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invocation_validation_requests' }, async () => {
+        const { count } = await supabase.from('invocation_validation_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+        setPendingInvocations(count || 0);
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -401,6 +421,7 @@ const Admin = () => {
   if (currentView === 'invocations-manage') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminInvocationManager onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'sourates-validations') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminSourateValidations onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'nourania-validations') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminNouraniaValidations onBack={handleBack} /></div></AppLayout>;
+  if (currentView === 'invocations-validations') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminInvocationValidations onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'registration-validations') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminRegistrationValidations onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'messages') return <AppLayout title="Tableau de bord"><div className="p-4"><Button variant="ghost" onClick={handleBack} className="mb-4">← Retour</Button><AdminMessaging /></div></AppLayout>;
   if (currentView === 'homework') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminHomework onBack={handleBack} /></div></AppLayout>;
@@ -513,6 +534,28 @@ const Admin = () => {
               </div>
             </div>
             {pendingNourania > 0 && <Badge className="bg-red-500 text-white hover:bg-red-600 text-lg px-3 py-1 animate-pulse">{pendingNourania}</Badge>}
+          </div>
+        </button>
+
+        <button
+          onClick={() => setCurrentView('invocations-validations')}
+          className={`w-full rounded-2xl p-4 shadow-card border transition-all duration-300 ${
+            pendingInvocations > 0 ? 'bg-red-500/10 border-red-300 dark:border-red-700 hover:bg-red-500/20' : 'bg-green-500/10 border-green-300 dark:border-green-700 hover:bg-green-500/20'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${pendingInvocations > 0 ? 'bg-red-500/20' : 'bg-green-500/20'}`}>
+                <Hand className={`h-6 w-6 ${pendingInvocations > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`} />
+              </div>
+              <div className="text-left">
+                <p className={`font-bold text-base ${pendingInvocations > 0 ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}`}>Validation Invocations</p>
+                <p className={`text-sm ${pendingInvocations > 0 ? 'text-red-600/70 dark:text-red-400/70' : 'text-green-600/70 dark:text-green-400/70'}`}>
+                  {pendingInvocations > 0 ? 'Invocation(s) à valider' : 'Aucune validation en attente'}
+                </p>
+              </div>
+            </div>
+            {pendingInvocations > 0 && <Badge className="bg-red-500 text-white hover:bg-red-600 text-lg px-3 py-1 animate-pulse">{pendingInvocations}</Badge>}
           </div>
         </button>
 
