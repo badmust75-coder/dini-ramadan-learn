@@ -312,7 +312,7 @@ const RamadanDayDialog = ({
       }
       onSaveQuizResponse(currentQuiz.id, primarySelected, currentAttempt, true);
       setShowExplanation(true);
-      autoAdvanceTimerRef.current = setTimeout(() => advanceToNextQuestion(), 4000);
+      autoAdvanceTimerRef.current = setTimeout(() => advanceToNextQuestion(), 10000);
     } else {
       playBoing();
       if (currentAttempt === 1) {
@@ -328,7 +328,7 @@ const RamadanDayDialog = ({
         setAllFirstAttempt(false);
         onSaveQuizResponse(currentQuiz.id, primarySelected, 2, false);
         setShowExplanation(true);
-        autoAdvanceTimerRef.current = setTimeout(() => advanceToNextQuestion(), 4000);
+        autoAdvanceTimerRef.current = setTimeout(() => advanceToNextQuestion(), 10000);
       }
     }
   };
