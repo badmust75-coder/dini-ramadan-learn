@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Check, ChevronRight, SkipForward, RotateCcw, Pause, Play, Star, Trophy } from 'lucide-react';
+import { Check, ChevronRight, SkipForward, RotateCcw, Pause, Play, Star, Trophy, Eye, Download, Printer, FileText, Image, Film, Music } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useConfetti } from '@/hooks/useConfetti';
 
@@ -26,6 +26,16 @@ interface DayVideo {
   display_order: number;
 }
 
+interface DayActivity {
+  id: string;
+  day_id: number;
+  type: string;
+  file_url: string;
+  file_name: string;
+  file_type: string | null;
+  order_index: number | null;
+}
+
 interface RamadanDayDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -34,6 +44,7 @@ interface RamadanDayDialogProps {
   videoUrl: string | null;
   videos: DayVideo[];
   quizzes: Quiz[];
+  activities?: DayActivity[];
   quizCompleted: boolean;
   videoWatched: boolean;
   maxErrors?: number;

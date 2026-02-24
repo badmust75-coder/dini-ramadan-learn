@@ -402,6 +402,7 @@ const Ramadan = () => {
             videoUrl={openDay.video_url}
             videos={getVideosForDay(openDay.id)}
             quizzes={getQuizzesForDay(openDay.id)}
+            activities={getActivitiesForDay(openDay.id)}
             quizCompleted={!!getDayProgress(openDay.id)?.quiz_completed}
             videoWatched={!!getDayProgress(openDay.id)?.video_watched}
             maxErrors={(settings as any)?.max_errors ?? 3}
