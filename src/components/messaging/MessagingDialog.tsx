@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Mic, Send, X, Mail, MailOpen } from 'lucide-react';
+import { Mic, Send, X, Mail, MailOpen, Music } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -9,12 +9,19 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import AudioPlayer from '@/components/audio/AudioPlayer';
 
 interface Message {
   id: string;
@@ -24,6 +31,9 @@ interface Message {
   created_at: string;
   sender_type: string;
   conversation_id: string | null;
+  audio_url: string | null;
+  message_type: string;
+  deleted_at: string | null;
 }
 
 interface MessagingDialogProps {
@@ -42,8 +52,9 @@ const MessagingDialog = ({ open, onOpenChange, onMessagesRead }: MessagingDialog
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch conversation messages (user_id based – RLS guarantees user sees only their own)
+  // Fetch conversation messages
   const { data: messages = [], refetch } = useQuery({
     queryKey: ['user-messages', user?.id],
     queryFn: async () => {
@@ -52,6 +63,7 @@ const MessagingDialog = ({ open, onOpenChange, onMessagesRead }: MessagingDialog
         .from('user_messages')
         .select('*')
         .eq('user_id', user.id)
+        .is('deleted_at', null)
         .order('created_at', { ascending: true });
 
       if (error) {
@@ -87,38 +99,24 @@ const MessagingDialog = ({ open, onOpenChange, onMessagesRead }: MessagingDialog
     }
   }, [open, user, messages, queryClient, onMessagesRead]);
 
-  // Subscribe to realtime updates
+  // Realtime subscription
   useEffect(() => {
     if (!user) return;
-
     const channel = supabase
       .channel('user-messages-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'user_messages',
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          refetch();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_messages', filter: `user_id=eq.${user.id}` }, () => { refetch(); })
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [user, refetch]);
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
+  // Speech recognition setup
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -127,7 +125,6 @@ const MessagingDialog = ({ open, onOpenChange, onMessagesRead }: MessagingDialog
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
       recognitionRef.current.lang = 'fr-FR';
-
       recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
         let transcript = '';
         for (let i = 0; i < event.results.length; i++) {
@@ -135,33 +132,17 @@ const MessagingDialog = ({ open, onOpenChange, onMessagesRead }: MessagingDialog
         }
         setMessage(transcript);
       };
-
-      recognitionRef.current.onerror = () => {
-        setIsRecording(false);
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsRecording(false);
-      };
+      recognitionRef.current.onerror = () => setIsRecording(false);
+      recognitionRef.current.onend = () => setIsRecording(false);
     }
-
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
+    return () => { if (recognitionRef.current) recognitionRef.current.stop(); };
   }, []);
 
   const toggleRecording = () => {
     if (!recognitionRef.current) {
-      toast({
-        title: 'Non supporté',
-        description: 'La reconnaissance vocale n\'est pas supportée sur ce navigateur',
-        variant: 'destructive',
-      });
+      toast({ title: 'Non supporté', description: 'La reconnaissance vocale n\'est pas supportée sur ce navigateur', variant: 'destructive' });
       return;
     }
-
     if (isRecording) {
       recognitionRef.current.stop();
       setIsRecording(false);
@@ -174,42 +155,85 @@ const MessagingDialog = ({ open, onOpenChange, onMessagesRead }: MessagingDialog
 
   const handleSubmit = async () => {
     if (!message.trim() || !user) return;
-
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
-        .from('user_messages')
-        .insert({
-          user_id: user.id,
-          message: message.trim(),
-          sender_type: 'user',
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Message envoyé',
-        description: 'Votre message a été transmis à l\'administrateur',
+      const { error } = await supabase.from('user_messages').insert({
+        user_id: user.id, message: message.trim(), sender_type: 'user', message_type: 'text',
       });
-
+      if (error) throw error;
+      toast({ title: 'Message envoyé', description: 'Votre message a été transmis à l\'administrateur' });
       setMessage('');
       refetch();
     } catch (error) {
       console.error('Error sending message:', error);
-      toast({
-        title: 'Erreur',
-        description: 'Impossible d\'envoyer le message',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erreur', description: 'Impossible d\'envoyer le message', variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleClose = () => {
-    if (isRecording && recognitionRef.current) {
-      recognitionRef.current.stop();
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    e.target.value = '';
+
+    setIsSubmitting(true);
+    try {
+      const fileName = `${user.id}/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage.from('messages-audio').upload(fileName, file);
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('messages-audio').getPublicUrl(fileName);
+
+      const { error } = await supabase.from('user_messages').insert({
+        user_id: user.id, message: '🎵 Message audio', sender_type: 'user',
+        message_type: 'audio', audio_url: urlData.publicUrl,
+      });
+      if (error) throw error;
+
+      toast({ title: 'Audio envoyé ✓' });
+      refetch();
+    } catch (error) {
+      console.error('Error uploading audio:', error);
+      toast({ title: 'Erreur', description: 'Impossible d\'envoyer l\'audio', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const handleReplaceAudio = async (msgId: string, file: File) => {
+    if (!user) return;
+    try {
+      const fileName = `${user.id}/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage.from('messages-audio').upload(fileName, file);
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from('messages-audio').getPublicUrl(fileName);
+      const { error } = await supabase.from('user_messages').update({ audio_url: urlData.publicUrl }).eq('id', msgId);
+      if (error) throw error;
+      toast({ title: 'Audio remplacé ✓' });
+      refetch();
+    } catch (error) {
+      console.error('Error replacing audio:', error);
+      toast({ title: 'Erreur', description: 'Impossible de remplacer l\'audio', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteAudio = async (msgId: string) => {
+    try {
+      const { error } = await supabase.from('user_messages')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', msgId);
+      if (error) throw error;
+      toast({ title: 'Audio supprimé ✓' });
+      refetch();
+    } catch (error) {
+      console.error('Error deleting audio:', error);
+      toast({ title: 'Erreur', description: 'Impossible de supprimer l\'audio', variant: 'destructive' });
+    }
+  };
+
+  const handleClose = () => {
+    if (isRecording && recognitionRef.current) recognitionRef.current.stop();
     setIsRecording(false);
     setMessage('');
     onOpenChange(false);
@@ -223,9 +247,7 @@ const MessagingDialog = ({ open, onOpenChange, onMessagesRead }: MessagingDialog
             <Mail className="h-5 w-5" />
             Messagerie
           </DialogTitle>
-          <DialogDescription className="sr-only">
-            Envoyez un message à l'administrateur
-          </DialogDescription>
+          <DialogDescription className="sr-only">Envoyez un message à l'administrateur</DialogDescription>
         </DialogHeader>
 
         {/* Messages List */}
@@ -238,33 +260,32 @@ const MessagingDialog = ({ open, onOpenChange, onMessagesRead }: MessagingDialog
               </div>
             ) : (
               messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-lg p-3 ${
-                      msg.sender_type === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : msg.is_read
-                          ? 'bg-emerald-500/20 border border-emerald-500/50'
-                          : 'bg-orange-500/20 border border-orange-500/50 animate-pulse'
-                    }`}
-                  >
-                    <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
-                    <p className={`text-xs mt-1 ${
-                      msg.sender_type === 'user' 
-                        ? 'text-primary-foreground/70' 
-                        : 'text-muted-foreground'
+                <div key={msg.id} className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] rounded-lg ${msg.message_type === 'audio' ? 'w-full' : 'p-3'} ${
+                    msg.sender_type === 'user'
+                      ? msg.message_type === 'audio' ? '' : 'bg-primary text-primary-foreground'
+                      : msg.is_read
+                        ? 'bg-emerald-500/20 border border-emerald-500/50'
+                        : 'bg-orange-500/20 border border-orange-500/50 animate-pulse'
+                  }`}>
+                    {msg.message_type === 'audio' && msg.audio_url ? (
+                      <AudioPlayer
+                        audioUrl={msg.audio_url}
+                        compact
+                        canManage={msg.sender_type === 'user'}
+                        onReplace={(file) => handleReplaceAudio(msg.id, file)}
+                        onDelete={() => handleDeleteAudio(msg.id)}
+                      />
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                    )}
+                    <p className={`text-xs mt-1 ${msg.message_type === 'audio' ? 'px-3 pb-1' : ''} ${
+                      msg.sender_type === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'
                     }`}>
                       {format(new Date(msg.created_at), 'dd MMM à HH:mm', { locale: fr })}
                       {msg.sender_type === 'admin' && (
                         <span className="ml-2">
-                          {msg.is_read ? (
-                            <MailOpen className="h-3 w-3 inline" />
-                          ) : (
-                            <Mail className="h-3 w-3 inline" />
-                          )}
+                          {msg.is_read ? <MailOpen className="h-3 w-3 inline" /> : <Mail className="h-3 w-3 inline" />}
                         </span>
                       )}
                     </p>
@@ -275,63 +296,47 @@ const MessagingDialog = ({ open, onOpenChange, onMessagesRead }: MessagingDialog
           </div>
         </div>
 
+        {/* Input area */}
         <div className="space-y-3 pt-3 border-t">
-          {/* Microphone Button */}
-          <div className="flex justify-center">
-            <button
-              onClick={toggleRecording}
-              className={`
-                relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300
-                ${isRecording 
-                  ? 'bg-emerald-500 animate-pulse' 
-                  : 'bg-destructive'
-                }
-              `}
-            >
-              <Mic className="h-8 w-8 text-primary-foreground" />
-              
-              {isRecording && (
-                <>
-                  <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-30" />
-                  <span className="absolute inset-[-6px] rounded-full border-2 border-emerald-400 animate-pulse opacity-50" />
-                  <span className="absolute inset-[-12px] rounded-full border-2 border-emerald-300 animate-pulse opacity-30" />
-                </>
-              )}
-            </button>
+          <input ref={audioInputRef} type="file" className="hidden" accept=".mp3,.wav,.ogg,.webm,.m4a,audio/*" onChange={handleAudioUpload} />
+
+          <div className="flex items-end gap-2">
+            {/* Dictation mic - inline small */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={toggleRecording}
+                    className={`flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-all ${
+                      isRecording ? 'bg-emerald-500 animate-pulse' : 'bg-destructive'
+                    }`}
+                  >
+                    <Mic className="h-5 w-5 text-primary-foreground" />
+                    {isRecording && <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-30" />}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{isRecording ? 'Parlez maintenant...' : 'Appuyez pour dicter'}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <Textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Votre message..."
+              rows={2}
+              className="resize-none flex-1 min-h-[44px]"
+            />
           </div>
 
-          <p className="text-center text-xs text-muted-foreground">
-            {isRecording ? 'Parlez maintenant...' : 'Appuyez pour dicter'}
-          </p>
-
-          {/* Message Textarea */}
-          <Textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Votre message..."
-            rows={2}
-            className="resize-none"
-          />
-
-          {/* Actions */}
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleClose}
-              className="flex-1"
-              size="sm"
-            >
-              <X className="h-4 w-4 mr-2" />
-              Fermer
+            <Button variant="outline" onClick={handleClose} className="flex-1" size="sm">
+              <X className="h-4 w-4 mr-2" /> Fermer
             </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={!message.trim() || isSubmitting}
-              className="flex-1"
-              size="sm"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Envoyer
+            <Button variant="outline" onClick={() => audioInputRef.current?.click()} disabled={isSubmitting} size="sm">
+              <Music className="h-4 w-4 mr-1" /> Audio
+            </Button>
+            <Button onClick={handleSubmit} disabled={!message.trim() || isSubmitting} className="flex-1" size="sm">
+              <Send className="h-4 w-4 mr-2" /> Envoyer
             </Button>
           </div>
         </div>

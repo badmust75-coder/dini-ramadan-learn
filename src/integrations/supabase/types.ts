@@ -1399,33 +1399,45 @@ export type Database = {
       }
       user_messages: {
         Row: {
+          audio_url: string | null
           conversation_id: string | null
           created_at: string
+          deleted_at: string | null
           id: string
           is_read: boolean
           message: string
+          message_type: string
           parent_message_id: string | null
           sender_type: string
+          updated_at: string
           user_id: string
         }
         Insert: {
+          audio_url?: string | null
           conversation_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           is_read?: boolean
           message: string
+          message_type?: string
           parent_message_id?: string | null
           sender_type?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
+          audio_url?: string | null
           conversation_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           is_read?: boolean
           message?: string
+          message_type?: string
           parent_message_id?: string | null
           sender_type?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
