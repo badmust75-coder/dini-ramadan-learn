@@ -96,6 +96,12 @@ const Index = () => {
         <div className="p-4 space-y-6">
           {/* Welcome Section */}
           <div className="text-center py-6 animate-fade-in">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center">
+                <span className="font-arabic text-base text-primary">﷽</span>
+              </div>
+              <h1 className="text-2xl font-bold text-foreground">Dini Bismillah</h1>
+            </div>
             <p className="text-muted-foreground mb-1">Assalamou Alaykoum</p>
             <h2 className="text-2xl font-bold text-foreground">
               Bienvenue{profile?.full_name ? `, ${profile.full_name}` : ''} !

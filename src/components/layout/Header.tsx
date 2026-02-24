@@ -46,15 +46,8 @@ const Header = ({
           {/* Left: empty space for balance */}
           <div className="w-10" />
 
-          {/* Center: Title with logo */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center">
-              <span className="font-arabic text-sm text-primary">﷽</span>
-            </div>
-            <h1 className="text-lg font-bold text-primary-foreground">
-              {title}
-            </h1>
-          </div>
+          {/* Center: spacer */}
+          <div className="flex-1" />
 
           {/* Right: Classement, Présence, Messaging, Home, Admin (if admin), Logout */}
           <div className="flex items-center gap-1">
