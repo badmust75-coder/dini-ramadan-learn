@@ -57,6 +57,7 @@ const Header = ({
 
           {/* Right: Classement, Présence, Messaging, Home, Admin (if admin), Logout */}
           <div className="flex items-center gap-1">
+            <AccountSwitcher />
             <Button 
               variant="ghost" 
               size="icon" 
