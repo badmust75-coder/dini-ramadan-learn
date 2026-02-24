@@ -42,7 +42,11 @@ const Header = ({
           <div className="flex-1" />
 
           <div className="flex items-center gap-1">
-            {/* 1. Messagerie (far left of icons) */}
+            {/* 1. Paramètres (far left) */}
+            <UserSettingsDialog />
+            {/* 2. Account switcher */}
+            <AccountSwitcher />
+            {/* 3. Messagerie */}
             <Button variant="ghost" size="icon" onClick={handleOpenMessaging} className="text-primary-foreground hover:bg-primary-foreground/10 relative">
               <Mail className="h-5 w-5" />
               {unreadCount > 0 && (
@@ -51,26 +55,22 @@ const Header = ({
                 </Badge>
               )}
             </Button>
-            {/* 2. Home */}
+            {/* 4. Classement */}
+            <Button variant="ghost" size="icon" onClick={() => navigate('/classement')} className="text-primary-foreground hover:bg-primary-foreground/10">
+              <Trophy className="h-5 w-5" />
+            </Button>
+            {/* 5. Calendrier */}
+            <Button variant="ghost" size="icon" onClick={() => navigate('/attendance')} className="text-primary-foreground hover:bg-primary-foreground/10">
+              <CalendarCheck className="h-5 w-5" />
+            </Button>
+            {/* 6. Admin notifications */}
+            {isAdmin && <AdminNotificationCenter />}
+            {/* 7. Accueil (far right) */}
             {!isHome && (
               <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="text-primary-foreground hover:bg-primary-foreground/10">
                 <Home className="h-5 w-5" />
               </Button>
             )}
-            {/* 3. Classement */}
-            <Button variant="ghost" size="icon" onClick={() => navigate('/classement')} className="text-primary-foreground hover:bg-primary-foreground/10">
-              <Trophy className="h-5 w-5" />
-            </Button>
-            {/* 4. Calendrier */}
-            <Button variant="ghost" size="icon" onClick={() => navigate('/attendance')} className="text-primary-foreground hover:bg-primary-foreground/10">
-              <CalendarCheck className="h-5 w-5" />
-            </Button>
-            {/* 5. Admin notifications */}
-            {isAdmin && <AdminNotificationCenter />}
-            {/* 6. Account switcher */}
-            <AccountSwitcher />
-            {/* 7. Paramètres (far right, includes logout) */}
-            <UserSettingsDialog />
           </div>
         </div>
       </header>
