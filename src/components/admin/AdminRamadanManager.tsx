@@ -33,6 +33,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import AdminRamadanActivities from '@/components/admin/AdminRamadanActivities';
 
 interface AdminRamadanManagerProps {
   onBack: () => void;
@@ -941,6 +942,9 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
                 )}
               </Button>
             </div>
+
+            {/* Activities Section */}
+            {selectedDay && <AdminRamadanActivities dayId={selectedDay} />}
           </div>
         </DialogContent>
       </Dialog>

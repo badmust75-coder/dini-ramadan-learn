@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Check, ChevronRight, SkipForward, RotateCcw, Pause, Play, Star, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useConfetti } from '@/hooks/useConfetti';
+import RamadanActivitySection from '@/components/ramadan/RamadanActivitySection';
 
 interface Quiz {
   id: string;
