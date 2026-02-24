@@ -131,7 +131,7 @@ const AdminOnlineUsers = () => {
       </div>
 
       {/* User list */}
-      <ScrollArea className="max-h-80">
+      <ScrollArea className="max-h-[60vh]">
         <div className="divide-y divide-border/50">
           {sortedUsers.length === 0 ? (
             <div className="py-6 text-center text-sm text-muted-foreground">
