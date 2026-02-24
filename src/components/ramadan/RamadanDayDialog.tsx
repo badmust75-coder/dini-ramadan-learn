@@ -566,6 +566,7 @@ const RamadanDayDialog = ({
                   Refaire le quiz (entraînement)
                 </Button>
               )}
+              <RamadanActivitySection dayId={dayId} />
             </div>
           ) : (
             /* Quiz step — one question at a time with second chance */
