@@ -19,6 +19,9 @@ interface LearningCardProps {
   progressPercentage?: number;
   averageProgress?: number;
   showAverageProgress?: boolean;
+  onReplaceAudio?: (file: File) => void;
+  onDeleteAudio?: () => void;
+  canManageAudio?: boolean;
 }
 
 const LearningCard = ({
