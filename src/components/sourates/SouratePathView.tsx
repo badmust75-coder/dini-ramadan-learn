@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Lock } from 'lucide-react';
+import { Lock, Check, Gift } from 'lucide-react';
 import charGirlReading from '@/assets/char-girl-reading.png';
 import charBoyPraying from '@/assets/char-boy-praying.png';
 import charBoyChapelet from '@/assets/char-boy-chapelet.png';
@@ -36,94 +36,18 @@ interface SouratePathViewProps {
 }
 
 const ITEMS_PER_ROW = 5;
-const WAVE_OFFSETS = [0, -10, -16, -10, 0];
+const NODE_SIZE = 56;
+const NODE_GAP_Y = 24;
+const ROW_GAP = 16;
 
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+type NodeType = 'sourate' | 'chest' | 'character';
 
-const getStarColors = (sourateNum: number, isValidated: boolean): { fill: string; stroke: string; strokeWidth: number } => {
-  if (isValidated) {
-    return { fill: 'hsl(142, 70%, 45%)', stroke: 'hsl(35, 80%, 50%)', strokeWidth: 3 };
-  }
-  if (sourateNum === 1) {
-    return { fill: 'hsl(140, 40%, 85%)', stroke: 'hsl(140, 30%, 70%)', strokeWidth: 1.5 };
-  }
-
-  let t: number;
-  if (sourateNum >= 78) {
-    t = (114 - sourateNum) / (114 - 78);
-  } else {
-    t = (77 - sourateNum) / (77 - 2);
-  }
-
-  const h = lerp(140, 35, t);
-  const s = lerp(40, 70, t);
-  const l = lerp(85, 72, t);
-  const strokeL = lerp(70, 55, t);
-
-  return {
-    fill: `hsl(${h}, ${s}%, ${l}%)`,
-    stroke: `hsl(${h}, ${s}%, ${strokeL}%)`,
-    strokeWidth: 1.5,
-  };
-};
-
-const StarBadge = ({
-  number,
-  isValidated,
-  isAccessible,
-  fill,
-  stroke,
-  strokeWidth,
-  nameFrench,
-  onClick,
-}: {
-  number: number;
-  isValidated: boolean;
-  isAccessible: boolean;
-  fill: string;
-  stroke: string;
-  strokeWidth: number;
-  nameFrench: string;
-  onClick: () => void;
-}) => {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'relative flex flex-col items-center transition-all duration-200',
-        isAccessible && !isValidated && 'hover:scale-110',
-        !isAccessible && 'cursor-not-allowed opacity-80'
-      )}
-      disabled={!isAccessible}
-      style={{ width: 52 }}
-    >
-      <div className="relative w-11 h-11 flex items-center justify-center">
-        <svg viewBox="0 0 48 48" className="w-full h-full drop-shadow-md">
-          <path
-            d="M24 2 L29.5 17.5 L46 17.5 L33 27.5 L37.5 44 L24 34 L10.5 44 L15 27.5 L2 17.5 L18.5 17.5 Z"
-            fill={fill}
-            stroke={stroke}
-            strokeWidth={strokeWidth}
-          />
-        </svg>
-        <span className={cn(
-          'absolute inset-0 flex items-center justify-center font-bold text-[9px] leading-none pt-0.5',
-          isValidated ? 'text-white' : 'text-foreground/80'
-        )}>
-          {number}
-        </span>
-        {!isAccessible && (
-          <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white shadow flex items-center justify-center">
-            <Lock className="h-2 w-2 text-muted-foreground" />
-          </div>
-        )}
-      </div>
-      <span className="text-[7px] text-muted-foreground text-center leading-tight mt-0.5 w-full truncate">
-        {nameFrench}
-      </span>
-    </button>
-  );
-};
+interface PathNode {
+  type: NodeType;
+  sourate?: SouratePathViewProps['sourates'][0];
+  characterIndex?: number;
+  globalIndex: number;
+}
 
 const SouratePathView = ({
   sourates,
@@ -132,75 +56,175 @@ const SouratePathView = ({
   isSourateAccessible,
   onSourateClick,
 }: SouratePathViewProps) => {
-  const rows: typeof sourates[] = [];
-  for (let i = 0; i < sourates.length; i += ITEMS_PER_ROW) {
-    rows.push(sourates.slice(i, i + ITEMS_PER_ROW));
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const currentNodeRef = useRef<HTMLDivElement>(null);
+
+  // Build the node list: sourates with chest every 10 and character every 15
+  const nodes = useMemo(() => {
+    const result: PathNode[] = [];
+    let charIdx = 0;
+    sourates.forEach((s, i) => {
+      // Insert chest milestone every 10 sourates (after 10th, 20th, etc.)
+      if (i > 0 && i % 10 === 0) {
+        result.push({ type: 'chest', globalIndex: result.length });
+      }
+      // Insert character every 15 sourates
+      if (i > 0 && i % 15 === 0) {
+        result.push({ type: 'character', characterIndex: charIdx++ % CHARACTER_IMAGES.length, globalIndex: result.length });
+      }
+      result.push({ type: 'sourate', sourate: s, globalIndex: result.length });
+    });
+    return result;
+  }, [sourates]);
+
+  // Build rows of ITEMS_PER_ROW
+  const rows: PathNode[][] = [];
+  for (let i = 0; i < nodes.length; i += ITEMS_PER_ROW) {
+    rows.push(nodes.slice(i, i + ITEMS_PER_ROW));
   }
 
-  let characterIndex = 0;
+  // Find first available (not completed, not locked) sourate for auto-scroll
+  const firstAvailableNumber = useMemo(() => {
+    for (const s of sourates) {
+      const dbId = dbSourates.get(s.number);
+      const progress = dbId ? sourateProgress.get(dbId) : undefined;
+      const accessible = isSourateAccessible(s.number);
+      if (accessible && !progress?.is_validated) return s.number;
+    }
+    return null;
+  }, [sourates, dbSourates, sourateProgress, isSourateAccessible]);
+
+  useEffect(() => {
+    if (currentNodeRef.current) {
+      setTimeout(() => {
+        currentNodeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+  }, [firstAvailableNumber]);
+
+  const getNodeState = (sourate: SouratePathViewProps['sourates'][0]) => {
+    const dbId = dbSourates.get(sourate.number);
+    const progress = dbId ? sourateProgress.get(dbId) : undefined;
+    const accessible = isSourateAccessible(sourate.number);
+    if (progress?.is_validated) return 'completed';
+    if (accessible) return 'available';
+    return 'locked';
+  };
+
+  // Compute x positions for zigzag
+  const containerPadding = 24;
 
   return (
-    <div className="space-y-1 py-4">
+    <div ref={scrollRef} className="relative w-full pb-8">
       {rows.map((row, rowIndex) => {
-        const isRightToLeft = rowIndex % 2 === 0;
-        const orderedRow = isRightToLeft ? [...row] : [...row].reverse();
-        const showCharacter = rowIndex < rows.length - 1;
-        const charImg = CHARACTER_IMAGES[characterIndex % CHARACTER_IMAGES.length];
-        const charOnRight = isRightToLeft;
-
-        if (showCharacter) characterIndex++;
+        const isLeftToRight = rowIndex % 2 === 0;
+        const orderedRow = isLeftToRight ? row : [...row].reverse();
 
         return (
-          <div key={rowIndex}>
-            {/* Stars row with wave offsets */}
+          <div key={rowIndex} className="relative">
+            {/* Connecting lines between nodes in the row */}
             <div
               className={cn(
-                'flex items-start gap-0.5 px-1',
-                isRightToLeft ? 'justify-end' : 'justify-start'
+                'flex items-start px-2',
+                isLeftToRight ? 'justify-start' : 'justify-end'
               )}
+              style={{ gap: '2px' }}
             >
-              {orderedRow.map((sourate, itemIndex) => {
-                const dbId = dbSourates.get(sourate.number);
-                const progress = dbId ? sourateProgress.get(dbId) : undefined;
-                const accessible = isSourateAccessible(sourate.number);
-                const isValidated = !!progress?.is_validated;
-                const { fill, stroke, strokeWidth } = getStarColors(sourate.number, isValidated);
+              {orderedRow.map((node, colIndex) => {
+                const isFirst = colIndex === 0;
+                const isLast = colIndex === orderedRow.length - 1;
 
-                // Wave offset: alternate direction per row
-                const waveDir = rowIndex % 2 === 0 ? 1 : -1;
-                const offsetY = WAVE_OFFSETS[itemIndex] * waveDir;
+                if (node.type === 'chest') {
+                  return (
+                    <div
+                      key={`chest-${node.globalIndex}`}
+                      className="flex flex-col items-center"
+                      style={{ width: NODE_SIZE + 8, marginBottom: ROW_GAP }}
+                    >
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[hsl(var(--secondary))] to-[hsl(var(--gold-dark))] flex items-center justify-center shadow-lg border-2 border-[hsl(var(--gold-light))]">
+                        <Gift className="w-7 h-7 text-[hsl(var(--primary-foreground))]" />
+                      </div>
+                      <span className="text-[9px] text-[hsl(var(--secondary))] font-bold mt-1">Étape</span>
+                    </div>
+                  );
+                }
+
+                if (node.type === 'character') {
+                  const charImg = CHARACTER_IMAGES[node.characterIndex || 0];
+                  return (
+                    <div
+                      key={`char-${node.globalIndex}`}
+                      className="flex flex-col items-center"
+                      style={{ width: NODE_SIZE + 8, marginBottom: ROW_GAP }}
+                    >
+                      <img
+                        src={charImg.src}
+                        alt={charImg.alt}
+                        className="w-14 h-14 object-contain drop-shadow-md"
+                      />
+                    </div>
+                  );
+                }
+
+                // Sourate node
+                const sourate = node.sourate!;
+                const state = getNodeState(sourate);
+                const isCurrent = sourate.number === firstAvailableNumber;
 
                 return (
                   <div
                     key={sourate.number}
-                    style={{ transform: `translateY(${offsetY}px)` }}
+                    ref={isCurrent ? currentNodeRef : undefined}
+                    className="flex flex-col items-center"
+                    style={{ width: NODE_SIZE + 8, marginBottom: ROW_GAP }}
                   >
-                    <StarBadge
-                      number={sourate.number}
-                      isValidated={isValidated}
-                      isAccessible={accessible}
-                      fill={fill}
-                      stroke={stroke}
-                      strokeWidth={strokeWidth}
-                      nameFrench={sourate.name_french}
+                    <button
                       onClick={() => onSourateClick(sourate)}
-                    />
+                      disabled={state === 'locked'}
+                      className={cn(
+                        'relative rounded-full flex items-center justify-center transition-all duration-300 border-[3px]',
+                        state === 'completed' && 'bg-gradient-to-br from-[hsl(142,70%,45%)] to-[hsl(142,60%,35%)] border-[hsl(var(--secondary))] shadow-lg',
+                        state === 'available' && 'bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--royal-blue-dark))] border-[hsl(var(--secondary))] shadow-lg',
+                        state === 'locked' && 'bg-muted border-border cursor-not-allowed opacity-60',
+                        isCurrent && 'ring-4 ring-[hsl(var(--secondary))]/40 animate-pulse-gold'
+                      )}
+                      style={{ width: NODE_SIZE, height: NODE_SIZE }}
+                    >
+                      {state === 'completed' ? (
+                        <Check className="w-6 h-6 text-white" strokeWidth={3} />
+                      ) : state === 'locked' ? (
+                        <Lock className="w-5 h-5 text-muted-foreground" />
+                      ) : (
+                        <span className="text-sm font-bold text-[hsl(var(--primary-foreground))]">{sourate.number}</span>
+                      )}
+
+                      {/* Number badge for completed */}
+                      {state === 'completed' && (
+                        <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] text-[8px] font-bold flex items-center justify-center shadow">
+                          {sourate.number}
+                        </span>
+                      )}
+                    </button>
+
+                    {/* Sourate name */}
+                    <span className={cn(
+                      'text-[8px] text-center leading-tight mt-1 w-full truncate px-0.5',
+                      state === 'locked' ? 'text-muted-foreground/60' : 'text-muted-foreground'
+                    )}>
+                      {sourate.name_french.split('(')[0].trim()}
+                    </span>
                   </div>
                 );
               })}
             </div>
 
-            {/* Character at turn */}
-            {showCharacter && (
-              <div className={cn(
-                'flex py-0.5',
-                charOnRight ? 'justify-start pl-4' : 'justify-end pr-4'
-              )}>
-                <img
-                  src={charImg.src}
-                  alt={charImg.alt}
-                  className="w-11 h-11 object-contain"
-                />
+            {/* Vertical connector line to next row */}
+            {rowIndex < rows.length - 1 && (
+              <div
+                className={cn('flex', isLeftToRight ? 'justify-end pr-6' : 'justify-start pl-6')}
+                style={{ marginTop: -ROW_GAP + 4, marginBottom: 4 }}
+              >
+                <div className="w-1 h-6 rounded-full bg-border" />
               </div>
             )}
           </div>
