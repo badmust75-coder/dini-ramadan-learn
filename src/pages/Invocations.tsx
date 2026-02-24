@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Sun, Moon, CloudMoon, Home, Church, Plane, Shirt, Bath, UtensilsCrossed, CloudRain, Heart, BedDouble, Droplets, PawPrint, Activity, Hand, BookOpen, Loader2, Check, Video, FileText, Volume2, Image as ImageIcon, X, Send, Clock } from 'lucide-react';
+import { Sun, Moon, CloudMoon, Home, Church, Plane, Shirt, Bath, UtensilsCrossed, CloudRain, Heart, BedDouble, Droplets, PawPrint, Activity, Hand, BookOpen, Loader2, Check, Video, FileText, Volume2, Image as ImageIcon, X, Send, Clock, Lock, XCircle } from 'lucide-react';
 
 // Default icon mapping by title keyword
 const getDefaultIcon = (title: string) => {
@@ -65,6 +65,7 @@ interface InvocationDetailDialogProps {
 const InvocationDetailDialog = ({ invocation, contents, progress, validationRequest, onClose, onMarkMemorized, onRequestValidation, isRequestingValidation }: InvocationDetailDialogProps) => {
   const isMemorized = progress?.is_memorized ?? false;
   const isValidated = progress?.is_validated ?? false;
+  const isRefused = validationRequest?.status === 'refused';
 
   const getContentIcon = (type: string) => {
     switch (type) {
@@ -162,6 +163,14 @@ const InvocationDetailDialog = ({ invocation, contents, progress, validationRequ
             )}
           </Button>
 
+          {/* Refused indicator */}
+          {isRefused && !isValidated && (
+            <div className="flex items-center justify-center gap-2 py-2 text-destructive font-medium text-sm">
+              <XCircle className="h-5 w-5" />
+              Refusé — réessayez
+            </div>
+          )}
+
           {/* Validation request button */}
           {isValidated ? (
             <div className="flex items-center justify-center gap-2 py-2 text-green-600 dark:text-green-400 font-medium">
@@ -191,7 +200,7 @@ const InvocationDetailDialog = ({ invocation, contents, progress, validationRequ
 };
 
 const Invocations = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [selectedInvocation, setSelectedInvocation] = useState<any>(null);
 
@@ -248,6 +257,34 @@ const Invocations = () => {
     enabled: !!user,
   });
 
+  // Realtime subscription for validation requests & progress
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('invocation-unlock-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'invocation_validation_requests',
+        filter: `user_id=eq.${user.id}`,
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['user-invocation-validation-requests', user.id] });
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'user_invocation_progress',
+        filter: `user_id=eq.${user.id}`,
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['user-invocation-progress', user.id] });
+        queryClient.invalidateQueries({ queryKey: ['user-progress'] });
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, queryClient]);
+
   const toggleMemorizedMutation = useMutation({
     mutationFn: async ({ invocationId, isMemorized }: { invocationId: number; isMemorized: boolean }) => {
       if (!user) throw new Error('Non connecté');
@@ -276,6 +313,13 @@ const Invocations = () => {
   const requestValidationMutation = useMutation({
     mutationFn: async (invocationId: number) => {
       if (!user) throw new Error('Non connecté');
+      // Delete any previous refused request for this invocation
+      await supabase
+        .from('invocation_validation_requests')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('invocation_id', invocationId)
+        .eq('status', 'refused');
       const { error } = await supabase
         .from('invocation_validation_requests')
         .insert({ user_id: user.id, invocation_id: invocationId });
@@ -288,7 +332,41 @@ const Invocations = () => {
     onError: () => toast.error('Erreur lors de l\'envoi de la demande'),
   });
 
-  const memorizedCount = progress.filter((p: any) => p.is_memorized).length;
+  // Build the set of validated invocation IDs for determining unlock state
+  const validatedInvocationIds = new Set(
+    progress.filter((p: any) => p.is_validated).map((p: any) => p.invocation_id)
+  );
+
+  // Determine which cards are unlocked:
+  // Card at index 0 is always unlocked.
+  // Card at index N is unlocked if invocation at index N-1 is validated.
+  const isCardUnlocked = (index: number) => {
+    if (isAdmin) return true; // Admin sees all unlocked
+    if (index === 0) return true;
+    const prevInvocation = invocations[index - 1];
+    if (!prevInvocation) return false;
+    return validatedInvocationIds.has(prevInvocation.id);
+  };
+
+  const getCardValidationRequest = (invocationId: number) => {
+    // Return the most recent relevant request
+    const reqs = validationRequests.filter((r: any) => r.invocation_id === invocationId);
+    const pending = reqs.find((r: any) => r.status === 'pending');
+    if (pending) return pending;
+    const refused = reqs.find((r: any) => r.status === 'refused');
+    if (refused) return refused;
+    return reqs[0] || null;
+  };
+
+  const validatedCount = progress.filter((p: any) => p.is_validated).length;
+
+  const handleCardClick = (invocation: any, index: number) => {
+    if (!isCardUnlocked(index)) {
+      toast.info('🔒 Cette invocation sera débloquée après validation de l\'invocation précédente par l\'admin.');
+      return;
+    }
+    setSelectedInvocation(invocation);
+  };
 
   return (
     <AppLayout title="Invocations">
@@ -300,7 +378,7 @@ const Invocations = () => {
             <p className="text-sm text-muted-foreground font-arabic">أذكاري</p>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-primary">{memorizedCount}/{invocations.length}</p>
+            <p className="text-2xl font-bold text-primary">{validatedCount}/{invocations.length}</p>
             <p className="text-xs text-muted-foreground">mémorisées</p>
           </div>
         </div>
@@ -317,48 +395,66 @@ const Invocations = () => {
             {invocations.map((invocation, index) => {
               const Icon = getDefaultIcon(invocation.title_french);
               const invProgress = progress.find((p: any) => p.invocation_id === invocation.id);
-              const isMemorized = invProgress?.is_memorized ?? false;
-              const hasContents = contents.some((c: any) => c.invocation_id === invocation.id);
-              const catColor = getCategoryColor(invocation.category);
+              const isValidated = invProgress?.is_validated ?? false;
+              const unlocked = isCardUnlocked(index);
+              const valReq = getCardValidationRequest(invocation.id);
+              const isPending = valReq?.status === 'pending';
+              const isRefused = valReq?.status === 'refused' && !isValidated;
 
               return (
                 <button
                   key={invocation.id}
-                  onClick={() => setSelectedInvocation(invocation)}
-                  className="relative flex flex-col items-center justify-between bg-card border border-border rounded-2xl p-3 hover:shadow-md transition-all active:scale-95 min-h-[110px]"
+                  onClick={() => handleCardClick(invocation, index)}
+                  className={`relative flex flex-col items-center justify-between bg-card border border-border rounded-2xl p-3 transition-all min-h-[110px] ${
+                    unlocked
+                      ? 'hover:shadow-md active:scale-95'
+                      : 'opacity-50 grayscale cursor-not-allowed'
+                  }`}
                 >
                   {/* Number badge */}
                   <span className="absolute top-1.5 left-2 text-[10px] text-muted-foreground font-semibold">
                     #{index + 1}
                   </span>
 
-                  {/* Memorized checkmark */}
-                  {isMemorized && (
+                  {/* Top-right indicator */}
+                  {!unlocked ? (
+                    <span className="absolute top-1.5 right-1.5">
+                      <Lock className="h-4 w-4 text-muted-foreground" />
+                    </span>
+                  ) : isValidated ? (
                     <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                       <Check className="h-2.5 w-2.5 text-white" />
                     </span>
-                  )}
+                  ) : isPending ? (
+                    <span className="absolute top-1.5 right-1.5">
+                      <Clock className="h-4 w-4 text-amber-500" />
+                    </span>
+                  ) : isRefused ? (
+                    <span className="absolute top-1.5 right-1.5">
+                      <XCircle className="h-4 w-4 text-destructive" />
+                    </span>
+                  ) : null}
 
                   {/* Icon or image */}
                   <div className="mt-3 flex-1 flex items-center justify-center">
                     {invocation.image_url ? (
                       <img src={invocation.image_url} alt={invocation.title_french} className="w-12 h-12 object-contain" />
                     ) : (
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center bg-gradient-to-br from-teal-400 to-teal-600`}>
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gradient-to-br from-teal-400 to-teal-600">
                         <Icon className="h-6 w-6 text-white" />
                       </div>
                     )}
                   </div>
 
-                  {/* Category dot */}
-                  {invocation.category && (
-                    <span className={`absolute top-1.5 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full ${catColor}`} />
-                  )}
-
                   {/* Title */}
                   <p className="text-xs font-semibold text-foreground text-center mt-2 leading-tight">
                     {invocation.title_french}
                   </p>
+
+                  {/* Refused label */}
+                  {isRefused && unlocked && (
+                    <span className="text-[9px] text-destructive font-medium mt-0.5">Refusé</span>
+                  )}
                 </button>
               );
             })}
@@ -378,7 +474,7 @@ const Invocations = () => {
           invocation={selectedInvocation}
           contents={contents.filter((c: any) => c.invocation_id === selectedInvocation.id)}
           progress={progress.find((p: any) => p.invocation_id === selectedInvocation.id)}
-          validationRequest={validationRequests.find((r: any) => r.invocation_id === selectedInvocation.id && r.status === 'pending')}
+          validationRequest={getCardValidationRequest(selectedInvocation.id)}
           onClose={() => setSelectedInvocation(null)}
           onMarkMemorized={(id, mem) => toggleMemorizedMutation.mutate({ invocationId: id, isMemorized: mem })}
           onRequestValidation={(id) => requestValidationMutation.mutate(id)}

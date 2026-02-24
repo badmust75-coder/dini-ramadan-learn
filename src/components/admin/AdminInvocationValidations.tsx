@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, Clock, ArrowLeft, User } from 'lucide-react';
+import { CheckCircle, Clock, ArrowLeft, User, XCircle } from 'lucide-react';
 import { useEffect } from 'react';
 
 interface AdminInvocationValidationsProps {
@@ -32,7 +32,7 @@ const AdminInvocationValidations = ({ onBack }: AdminInvocationValidationsProps)
 
       const [{ data: profiles }, { data: invocations }] = await Promise.all([
         supabase.from('profiles').select('user_id, full_name, email').in('user_id', userIds.length ? userIds : ['none']),
-        supabase.from('invocations').select('id, title_french, title_arabic').in('id', invocationIds.length ? invocationIds : [0]),
+        supabase.from('invocations').select('id, title_french, title_arabic, display_order').in('id', invocationIds.length ? invocationIds : [0]),
       ]);
 
       return (data || []).map(req => ({
@@ -82,7 +82,7 @@ const AdminInvocationValidations = ({ onBack }: AdminInvocationValidationsProps)
       if (existing.data) {
         const { error } = await supabase
           .from('user_invocation_progress')
-          .update({ is_validated: true, updated_at: new Date().toISOString() })
+          .update({ is_validated: true, is_memorized: true, updated_at: new Date().toISOString() })
           .eq('id', existing.data.id);
         if (error) throw error;
       } else {
@@ -91,6 +91,9 @@ const AdminInvocationValidations = ({ onBack }: AdminInvocationValidationsProps)
           .insert({ user_id: request.user_id, invocation_id: request.invocation_id, is_validated: true, is_memorized: true });
         if (error) throw error;
       }
+
+      // Recalculate points
+      await supabase.rpc('recalculate_student_points', { p_user_id: request.user_id });
     },
     onSuccess: (_, request) => {
       toast({
@@ -102,6 +105,31 @@ const AdminInvocationValidations = ({ onBack }: AdminInvocationValidationsProps)
     },
     onError: (err: any) => {
       toast({ title: 'Erreur lors de la validation', description: err?.message || 'Veuillez réessayer.', variant: 'destructive' });
+    },
+  });
+
+  const refuseMutation = useMutation({
+    mutationFn: async (request: any) => {
+      const { error } = await supabase
+        .from('invocation_validation_requests')
+        .update({
+          status: 'refused',
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: user?.id,
+        })
+        .eq('id', request.id);
+      if (error) throw error;
+    },
+    onSuccess: (_, request) => {
+      toast({
+        title: '❌ Invocation refusée',
+        description: `${request.invocation?.title_french || 'Invocation'} refusée pour ${request.profile?.full_name || 'l\'élève'}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['admin-invocation-validations'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-invocations-count'] });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Erreur lors du refus', description: err?.message || 'Veuillez réessayer.', variant: 'destructive' });
     },
   });
 
@@ -146,7 +174,7 @@ const AdminInvocationValidations = ({ onBack }: AdminInvocationValidationsProps)
                         {req.profile?.full_name || req.profile?.email || 'Élève'}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {req.invocation?.title_french || 'Invocation'}
+                        #{(req.invocation?.display_order ?? 0) + 1} {req.invocation?.title_french || 'Invocation'}
                       </p>
                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                         <Clock className="h-3 w-3" />
@@ -154,15 +182,27 @@ const AdminInvocationValidations = ({ onBack }: AdminInvocationValidationsProps)
                       </p>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    className="bg-green-500 hover:bg-green-600 text-white"
-                    onClick={() => approveMutation.mutate(req)}
-                    disabled={approveMutation.isPending}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Valider
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                      onClick={() => refuseMutation.mutate(req)}
+                      disabled={refuseMutation.isPending || approveMutation.isPending}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Refuser
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="bg-green-500 hover:bg-green-600 text-white"
+                      onClick={() => approveMutation.mutate(req)}
+                      disabled={approveMutation.isPending || refuseMutation.isPending}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Approuver
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
