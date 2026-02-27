@@ -276,6 +276,23 @@ const Priere = () => {
           <p className="text-muted-foreground">La Prière - Apprentissage complet</p>
         </div>
 
+        {/* Weekly Calendar - moved up */}
+        <PrayerWeeklyCalendar prayerData={calendarData} />
+
+        {/* Next prayer banner - moved up */}
+        {nextPrayer && (
+          <div className="rounded-xl bg-green-700 text-white p-3 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-green-200">Prochaine prière</p>
+              <p className="font-bold text-lg">{nextPrayer.name}</p>
+            </div>
+            <div className="text-right">
+              <p className="font-mono font-bold text-xl">{nextPrayer.time}</p>
+              <p className="text-xs text-green-200 font-arabic">{nextPrayer.arabic}</p>
+            </div>
+          </div>
+        )}
+
         {/* ── PRAYER TIMES SECTION ── */}
         <div className="space-y-3 animate-fade-in">
           {/* City selector + Qibla button */}
@@ -341,23 +358,6 @@ const Priere = () => {
             />
           ) : null}
         </div>
-
-        {/* Weekly Calendar */}
-        <PrayerWeeklyCalendar prayerData={calendarData} />
-
-        {/* Next prayer banner */}
-        {nextPrayer && (
-          <div className="rounded-xl bg-green-700 text-white p-3 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-green-200">Prochaine prière</p>
-              <p className="font-bold text-lg">{nextPrayer.name}</p>
-            </div>
-            <div className="text-right">
-              <p className="font-mono font-bold text-xl">{nextPrayer.time}</p>
-              <p className="text-xs text-green-200 font-arabic">{nextPrayer.arabic}</p>
-            </div>
-          </div>
-        )}
 
         {/* Divider */}
         <div className="flex items-center gap-3">
