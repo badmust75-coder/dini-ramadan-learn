@@ -11,6 +11,7 @@ import AdminMessagingDialog from '@/components/messaging/AdminMessagingDialog';
 import NewMessageNotification from '@/components/messaging/NewMessageNotification';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { useAdminNotificationsCount } from '@/hooks/useAdminNotificationsCount';
+import { useMonitoringErrorCount } from '@/hooks/useMonitoringErrorCount';
 
 interface HeaderProps {
   title?: string;
@@ -27,6 +28,7 @@ const Header = ({
   const [showMessaging, setShowMessaging] = useState(false);
   const { unreadCount, hasNewMessage, clearNewMessageFlag } = useUnreadMessages();
   const adminPendingCount = useAdminNotificationsCount();
+  const monitoringErrors = useMonitoringErrorCount();
 
   const handleOpenMessaging = () => {
     clearNewMessageFlag();
@@ -59,6 +61,17 @@ const Header = ({
             <Button variant="ghost" size="icon" onClick={() => navigate('/attendance')} className="text-primary-foreground hover:bg-primary-foreground/10">
               <CalendarCheck className="h-5 w-5" />
             </Button>
+            {/* Admin: monitoring icon */}
+            {isAdmin && (
+              <Button variant="ghost" size="icon" onClick={() => navigate('/monitoring')} className="text-primary-foreground hover:bg-primary-foreground/10 relative">
+                <BarChart3 className="h-5 w-5" />
+                {monitoringErrors > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-red-500 border-2 border-primary animate-pulse">
+                    {monitoringErrors > 9 ? '9+' : monitoringErrors}
+                  </Badge>
+                )}
+              </Button>
+            )}
             {/* Admin: shield icon with dynamic badge, navigates directly to /admin */}
             {isAdmin && (
               <Button variant="ghost" size="icon" onClick={() => navigate('/admin')} className="text-primary-foreground hover:bg-primary-foreground/10 relative">

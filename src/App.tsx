@@ -24,6 +24,7 @@ import AllahNamesPage from "./pages/AllahNamesPage";
 import GenericModulePage from "./pages/GenericModulePage";
 import GrammaireConjugaisonPage from "./pages/GrammaireConjugaisonPage";
 import GenericTimelinePage from "./pages/GenericTimelinePage";
+import Monitoring from "./pages/Monitoring";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -64,6 +65,7 @@ const AppRoutes = () => {
       <Route path="/priere" element={<ProtectedRoute><Priere /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
       <Route path="/ressources" element={<ProtectedRoute><Ressources /></ProtectedRoute>} />
+      <Route path="/monitoring" element={<ProtectedRoute><Monitoring /></ProtectedRoute>} />
       <Route path="/classement" element={<ProtectedRoute><Classement /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
