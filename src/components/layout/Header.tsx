@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, Mail, Trophy, CalendarCheck } from 'lucide-react';
+import { Home, Mail, Trophy, CalendarCheck, Shield, Check } from 'lucide-react';
 import UserSettingsDialog from '@/components/settings/UserSettingsDialog';
 import AccountSwitcher from '@/components/auth/AccountSwitcher';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -10,7 +10,7 @@ import MessagingDialog from '@/components/messaging/MessagingDialog';
 import AdminMessagingDialog from '@/components/messaging/AdminMessagingDialog';
 import NewMessageNotification from '@/components/messaging/NewMessageNotification';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
-import AdminNotificationCenter from '@/components/admin/AdminNotificationCenter';
+import { useAdminNotificationsCount } from '@/hooks/useAdminNotificationsCount';
 
 interface HeaderProps {
   title?: string;
@@ -26,6 +26,7 @@ const Header = ({
   const { isAdmin } = useAuth();
   const [showMessaging, setShowMessaging] = useState(false);
   const { unreadCount, hasNewMessage, clearNewMessageFlag } = useUnreadMessages();
+  const adminPendingCount = useAdminNotificationsCount();
 
   const handleOpenMessaging = () => {
     clearNewMessageFlag();
@@ -42,11 +43,8 @@ const Header = ({
           <div className="flex-1" />
 
           <div className="flex items-center gap-1">
-            {/* 1. Paramètres (far left) */}
             <UserSettingsDialog />
-            {/* 2. Account switcher */}
             <AccountSwitcher />
-            {/* 3. Messagerie */}
             <Button variant="ghost" size="icon" onClick={handleOpenMessaging} className="text-primary-foreground hover:bg-primary-foreground/10 relative">
               <Mail className="h-5 w-5" />
               {unreadCount > 0 && (
@@ -55,17 +53,27 @@ const Header = ({
                 </Badge>
               )}
             </Button>
-            {/* 4. Classement */}
             <Button variant="ghost" size="icon" onClick={() => navigate('/classement')} className="text-primary-foreground hover:bg-primary-foreground/10">
               <Trophy className="h-5 w-5" />
             </Button>
-            {/* 5. Calendrier */}
             <Button variant="ghost" size="icon" onClick={() => navigate('/attendance')} className="text-primary-foreground hover:bg-primary-foreground/10">
               <CalendarCheck className="h-5 w-5" />
             </Button>
-            {/* 6. Admin notifications */}
-            {isAdmin && <AdminNotificationCenter />}
-            {/* 7. Accueil (far right) */}
+            {/* Admin: shield icon with dynamic badge, navigates directly to /admin */}
+            {isAdmin && (
+              <Button variant="ghost" size="icon" onClick={() => navigate('/admin')} className="text-primary-foreground hover:bg-primary-foreground/10 relative">
+                <Shield className="h-5 w-5" />
+                {adminPendingCount > 0 ? (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-red-500 border-2 border-primary animate-pulse">
+                    {adminPendingCount > 9 ? '9+' : adminPendingCount}
+                  </Badge>
+                ) : (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-emerald-500 border-2 border-primary flex items-center justify-center">
+                    <Check className="h-3 w-3 text-white" />
+                  </span>
+                )}
+              </Button>
+            )}
             {!isHome && (
               <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="text-primary-foreground hover:bg-primary-foreground/10">
                 <Home className="h-5 w-5" />
@@ -75,7 +83,6 @@ const Header = ({
         </div>
       </header>
 
-      {/* Show different messaging dialog based on role */}
       {isAdmin ? (
         <AdminMessagingDialog open={showMessaging} onOpenChange={setShowMessaging} onMessagesRead={clearNewMessageFlag} />
       ) : (
