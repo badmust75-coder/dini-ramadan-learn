@@ -49,6 +49,16 @@ const Monitoring = () => {
   const [broadcasting, setBroadcasting] = useState(false);
   const [notifHistory, setNotifHistory] = useState<any[]>([]);
 
+  // Debug Push
+  const [debugPush, setDebugPush] = useState<{
+    vapidKey: string;
+    mySubCount: number;
+    vapidResult: string;
+    notifPermission: string;
+    swStatus: string;
+  }>({ vapidKey: '...', mySubCount: 0, vapidResult: '...', notifPermission: '...', swStatus: '...' });
+  const [testResult, setTestResult] = useState<{ status: number; body: string; endpoint: string } | null>(null);
+
   // Section 3: Activity
   const [onlineCount, setOnlineCount] = useState(0);
   const [recentActions, setRecentActions] = useState<any[]>([]);
