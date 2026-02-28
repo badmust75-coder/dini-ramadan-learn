@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { autoSubscribeOnLogin } from '@/lib/notifications';
 
 interface AuthContextType {
   user: User | null;
@@ -108,6 +109,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsApproved(adminStatus ? true : approvalStatus);
         // Update last_seen on login
         await (supabase as any).from('profiles').update({ last_seen: new Date().toISOString() }).eq('user_id', session.user.id);
+        // Auto-subscribe to push notifications if permission granted
+        autoSubscribeOnLogin(session.user.id);
       }
       
       setLoading(false);

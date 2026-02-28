@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Moon, BookOpen, Hand, BookMarked, Sparkles, MessageSquare, Star, Music, Video, FileText, Image, Heart, List, Scroll, Users, MoreVertical, EyeOff, Eye } from 'lucide-react';
+import { Moon, BookOpen, Hand, BookMarked, Sparkles, MessageSquare, Star, Music, Video, FileText, Image, Heart, List, Scroll, Users, MoreVertical, EyeOff, Eye, Bell, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
@@ -11,10 +11,11 @@ import { useUserProgress } from '@/hooks/useUserProgress';
 import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { requestNotificationPermission, registerServiceWorker, subscribeToPush } from '@/lib/notifications';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
 const ICON_MAP: Record<string, LucideIcon> = {
   Moon, BookOpen, Hand, BookMarked, Sparkles, MessageSquare, Star, Music, Video, FileText, Image, Heart, List, Scroll, Users,
 };
@@ -24,6 +25,8 @@ const Index = () => {
   const { user, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
+  const [showNotifBanner, setShowNotifBanner] = useState(false);
+  const [activatingNotif, setActivatingNotif] = useState(false);
   const { data: progress } = useUserProgress();
 
   // Fetch modules from DB — admins see all, users see active only
@@ -77,6 +80,36 @@ const Index = () => {
     }
   }, [profile, profileLoading, user]);
 
+  // Check notification permission and show banner if "default"
+  useEffect(() => {
+    if (user && 'Notification' in window && Notification.permission === 'default') {
+      setShowNotifBanner(true);
+    }
+  }, [user]);
+
+  const handleActivateNotifications = async () => {
+    if (!user) return;
+    setActivatingNotif(true);
+    try {
+      await registerServiceWorker();
+      const perm = await requestNotificationPermission();
+      if (perm === 'granted') {
+        const result = await subscribeToPush(user.id);
+        if (result.success) {
+          toast.success('Notifications activées !');
+        } else {
+          toast.error('Erreur : ' + result.detail);
+        }
+      } else {
+        toast.info('Permission refusée');
+      }
+      setShowNotifBanner(false);
+    } catch (e: any) {
+      toast.error('Erreur : ' + e.message);
+    }
+    setActivatingNotif(false);
+  };
+
   const handleWelcomeComplete = () => {
     setShowWelcomeDialog(false);
   };
@@ -94,7 +127,23 @@ const Index = () => {
       <WelcomeNameDialog open={showWelcomeDialog} onComplete={handleWelcomeComplete} />
       <AppLayout showBottomNav={false}>
         <div className="p-4 space-y-6">
-          {/* Welcome Section */}
+          {/* Notification Permission Banner */}
+          {showNotifBanner && (
+            <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 flex items-center gap-3 animate-fade-in">
+              <Bell className="h-6 w-6 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">🔔 Active les notifications pour ne rien manquer !</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <Button size="sm" variant="ghost" onClick={() => setShowNotifBanner(false)}>
+                  Plus tard
+                </Button>
+                <Button size="sm" onClick={handleActivateNotifications} disabled={activatingNotif}>
+                  {activatingNotif ? '...' : 'Activer'}
+                </Button>
+              </div>
+            </div>
+          )}
           <div className="text-center py-6 animate-fade-in">
             <div className="flex items-center justify-center gap-2 mb-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center">

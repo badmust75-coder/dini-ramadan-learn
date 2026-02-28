@@ -63,52 +63,116 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
-export async function subscribeToPush(userId: string): Promise<boolean> {
+async function logToAppLogs(level: string, message: string, context?: any) {
   try {
+    await supabase.from('app_logs').insert({
+      level,
+      message,
+      context: context ? JSON.stringify(context) : '{}',
+    } as any);
+  } catch (e) {
+    console.error('Failed to log to app_logs:', e);
+  }
+}
+
+export async function subscribeToPush(userId: string): Promise<{ success: boolean; detail: string; endpoint?: string }> {
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      const msg = 'Push not supported in this browser';
+      await logToAppLogs('warn', msg, { userId });
+      return { success: false, detail: msg };
+    }
+
     const registration = await navigator.serviceWorker.ready;
     
     let subscription = await (registration as any).pushManager.getSubscription();
     
-    if (!subscription) {
+    if (subscription) {
+      console.log('[Push] Existing subscription found:', subscription.endpoint.substring(0, 40));
+      // Check if it's already saved in DB
+      const { count } = await supabase
+        .from('push_subscriptions')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('endpoint', subscription.endpoint);
+      
+      if ((count || 0) > 0) {
+        const msg = 'Subscription already exists in DB';
+        console.log('[Push]', msg);
+        return { success: true, detail: msg, endpoint: subscription.endpoint };
+      }
+      // Subscription exists in pushManager but not in DB → save it
+      console.log('[Push] Subscription not in DB, saving...');
+    } else {
+      // No subscription → create one
       const vapidKey = await getVapidPublicKey();
+      if (!vapidKey) {
+        const msg = 'VAPID key is empty, cannot subscribe';
+        await logToAppLogs('error', msg, { userId });
+        return { success: false, detail: msg };
+      }
       
       const subscribeOptions: PushSubscriptionOptionsInit = {
         userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey) as any,
       };
       
-      if (vapidKey) {
-        subscribeOptions.applicationServerKey = urlBase64ToUint8Array(vapidKey) as any;
-      }
-      
       subscription = await (registration as any).pushManager.subscribe(subscribeOptions);
+      console.log('[Push] New subscription created:', subscription.endpoint.substring(0, 40));
     }
 
     if (subscription) {
       const subscriptionJson = subscription.toJSON();
+      const endpoint = subscription.endpoint;
+      const p256dh = subscriptionJson.keys?.p256dh || '';
+      const auth = subscriptionJson.keys?.auth || '';
+      
+      console.log('[Push] Saving to DB:', { endpoint: endpoint.substring(0, 40), p256dh: p256dh.substring(0, 10), auth: auth.substring(0, 10) });
       
       const { error } = await supabase
         .from('push_subscriptions')
         .upsert({
           user_id: userId,
-          endpoint: subscription.endpoint,
-          p256dh: subscriptionJson.keys?.p256dh || '',
-          auth: subscriptionJson.keys?.auth || '',
+          endpoint,
+          p256dh,
+          auth,
         }, {
           onConflict: 'user_id,endpoint',
         });
 
       if (error) {
-        console.error('Error saving subscription:', error);
-        return false;
+        const msg = `Error saving subscription: ${error.message}`;
+        console.error('[Push]', msg);
+        await logToAppLogs('error', msg, { userId, error: error.message });
+        return { success: false, detail: msg };
       }
 
-      return true;
+      const msg = `Subscription saved successfully`;
+      console.log('[Push]', msg);
+      await logToAppLogs('info', `Push subscription saved for user`, { userId, endpoint: endpoint.substring(0, 40) });
+      return { success: true, detail: msg, endpoint };
     }
 
-    return false;
-  } catch (error) {
-    console.error('Error subscribing to push:', error);
-    return false;
+    return { success: false, detail: 'No subscription created' };
+  } catch (error: any) {
+    const msg = `Push subscription error: ${error.message}`;
+    console.error('[Push]', msg);
+    await logToAppLogs('error', msg, { userId, error: error.message });
+    return { success: false, detail: msg };
+  }
+}
+
+/** Auto-subscribe on login if permission is granted */
+export async function autoSubscribeOnLogin(userId: string) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  
+  try {
+    await registerServiceWorker();
+    const result = await subscribeToPush(userId);
+    console.log('[Push] Auto-subscribe on login:', result.detail);
+  } catch (e: any) {
+    console.error('[Push] Auto-subscribe failed:', e.message);
   }
 }
 

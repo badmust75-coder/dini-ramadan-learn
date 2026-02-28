@@ -20,6 +20,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Line, ComposedChart, Cell, LabelList
 } from 'recharts';
+import { registerServiceWorker, requestNotificationPermission, subscribeToPush } from '@/lib/notifications';
 
 const StatusDot = ({ ok }: { ok: boolean | null }) => {
   if (ok === null) return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
@@ -58,6 +59,11 @@ const Monitoring = () => {
     swStatus: string;
   }>({ vapidKey: '...', mySubCount: 0, vapidResult: '...', notifPermission: '...', swStatus: '...' });
   const [testResult, setTestResult] = useState<{ status: number; body: string; endpoint: string } | null>(null);
+  const [resubResult, setResubResult] = useState<string | null>(null);
+  const [resubbing, setResubbing] = useState(false);
+  const [debugExistingSub, setDebugExistingSub] = useState<string>('...');
+  const [chainTestResult, setChainTestResult] = useState<string[]>([]);
+  const [chainTesting, setChainTesting] = useState(false);
 
   // Section 3: Activity
   const [onlineCount, setOnlineCount] = useState(0);
@@ -147,13 +153,24 @@ const Monitoring = () => {
     const perm = 'Notification' in window ? Notification.permission : 'non supporté';
     setDebugPush(prev => ({ ...prev, notifPermission: perm }));
 
-    // Debug: SW status
+    // Debug: SW status + existing subscription
     if ('serviceWorker' in navigator) {
       const reg = await navigator.serviceWorker.getRegistration();
       const swState = reg?.active ? 'active' : reg?.installing ? 'installing' : reg?.waiting ? 'waiting' : 'inactive';
       setDebugPush(prev => ({ ...prev, swStatus: reg ? `registered (${swState})` : 'non enregistré' }));
+      
+      // Check existing pushManager subscription
+      if (reg) {
+        try {
+          const sub = await (reg as any).pushManager?.getSubscription();
+          setDebugExistingSub(sub ? sub.endpoint.substring(0, 30) + '...' : 'null (aucune)');
+        } catch { setDebugExistingSub('erreur lecture'); }
+      } else {
+        setDebugExistingSub('pas de SW');
+      }
     } else {
       setDebugPush(prev => ({ ...prev, swStatus: 'non supporté' }));
+      setDebugExistingSub('non supporté');
     }
   }, [user?.id]);
 
@@ -292,6 +309,75 @@ const Monitoring = () => {
     setBroadcasting(false);
   };
 
+  const handleResubscribe = async () => {
+    if (!user?.id) return;
+    setResubbing(true);
+    setResubResult(null);
+    try {
+      await registerServiceWorker();
+      const perm = await requestNotificationPermission();
+      if (perm !== 'granted') {
+        setResubResult(`❌ Permission refusée (${perm})`);
+        setResubbing(false);
+        return;
+      }
+      const result = await subscribeToPush(user.id);
+      if (result.success) {
+        setResubResult(`✅ Abonnement sauvegardé ! Endpoint : ${result.endpoint?.substring(0, 20)}...`);
+      } else {
+        setResubResult(`❌ Erreur : ${result.detail}`);
+      }
+      loadPushData();
+    } catch (e: any) {
+      setResubResult(`❌ Exception : ${e.message}`);
+    }
+    setResubbing(false);
+  };
+
+  const handleChainTest = async () => {
+    if (!user?.id) return;
+    setChainTesting(true);
+    setChainTestResult([]);
+    const addLog = (msg: string) => setChainTestResult(prev => [...prev, `${new Date().toLocaleTimeString()} — ${msg}`]);
+    
+    addLog('1️⃣ Enregistrement Service Worker...');
+    const reg = await registerServiceWorker();
+    addLog(reg ? `✅ SW enregistré (state: ${reg.active?.state || 'unknown'})` : '❌ SW non enregistré');
+    
+    addLog('2️⃣ Vérification permission...');
+    const perm = 'Notification' in window ? Notification.permission : 'non supporté';
+    addLog(`Permission actuelle : ${perm}`);
+    
+    if (perm === 'default') {
+      addLog('➡️ Demande de permission...');
+      const newPerm = await requestNotificationPermission();
+      addLog(`Résultat : ${newPerm}`);
+      if (newPerm !== 'granted') { addLog('⛔ Arrêt'); setChainTesting(false); return; }
+    } else if (perm !== 'granted') {
+      addLog('⛔ Permission denied, arrêt');
+      setChainTesting(false);
+      return;
+    }
+    
+    addLog('3️⃣ Vérification souscription existante...');
+    if ('serviceWorker' in navigator) {
+      const swReg = await navigator.serviceWorker.ready;
+      const existingSub = await (swReg as any).pushManager.getSubscription();
+      addLog(existingSub ? `Sub existante : ${existingSub.endpoint.substring(0, 30)}...` : 'Aucune souscription existante');
+    }
+    
+    addLog('4️⃣ subscribeToPush()...');
+    const result = await subscribeToPush(user.id);
+    addLog(result.success ? `✅ ${result.detail} — endpoint: ${result.endpoint?.substring(0, 30)}...` : `❌ ${result.detail}`);
+    
+    addLog('5️⃣ Vérification en DB...');
+    const { count } = await supabase.from('push_subscriptions').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
+    addLog(`Entrées en DB : ${count || 0}`);
+    
+    loadPushData();
+    setChainTesting(false);
+  };
+
   const handleClearLogs = async () => {
     setClearingLogs(true);
     await supabase.from('app_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
@@ -392,11 +478,11 @@ const Monitoring = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Debug Push Card */}
-            <div className="border-2 border-dashed border-orange-300 dark:border-orange-700 rounded-lg p-3 bg-orange-50/50 dark:bg-orange-950/20 space-y-2">
+            <div className="border-2 border-dashed border-orange-300 dark:border-orange-700 rounded-lg p-3 bg-orange-50/50 dark:bg-orange-950/20 space-y-3">
               <p className="text-sm font-bold flex items-center gap-1">🔍 Debug Push</p>
               <div className="grid grid-cols-1 gap-1 text-xs font-mono">
                 <div className="flex justify-between"><span className="text-muted-foreground">VAPID Key :</span><span className="truncate ml-2">{debugPush.vapidKey}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Mes abonnements :</span><span>{debugPush.mySubCount}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Mes abonnements DB :</span><span>{debugPush.mySubCount}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">get-vapid-key :</span><span>{debugPush.vapidResult}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Permission :</span>
                   <span className={debugPush.notifPermission === 'granted' ? 'text-emerald-600' : debugPush.notifPermission === 'denied' ? 'text-red-600' : 'text-orange-600'}>
@@ -404,7 +490,30 @@ const Monitoring = () => {
                   </span>
                 </div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Service Worker :</span><span>{debugPush.swStatus}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">pushManager.getSub :</span><span className="truncate ml-2">{debugExistingSub}</span></div>
               </div>
+
+              {/* Re-subscribe button */}
+              <Button onClick={handleResubscribe} disabled={resubbing} size="sm" variant="outline" className="w-full">
+                {resubbing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : '🔄'} Me ré-abonner aux notifications
+              </Button>
+              {resubResult && (
+                <p className={`text-xs font-mono p-2 rounded border ${resubResult.startsWith('✅') ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300' : 'bg-red-50 dark:bg-red-950/20 border-red-300'}`}>
+                  {resubResult}
+                </p>
+              )}
+
+              {/* Chain test button */}
+              <Button onClick={handleChainTest} disabled={chainTesting} size="sm" variant="outline" className="w-full">
+                {chainTesting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : '🔍'} Tester souscription maintenant
+              </Button>
+              {chainTestResult.length > 0 && (
+                <div className="bg-background border rounded p-2 space-y-0.5 max-h-48 overflow-y-auto">
+                  {chainTestResult.map((line, i) => (
+                    <p key={i} className="text-[10px] font-mono">{line}</p>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between">
