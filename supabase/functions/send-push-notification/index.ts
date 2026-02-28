@@ -347,12 +347,15 @@ serve(async (req) => {
 
     console.log(`Sent ${sentCount}/${targetSubs.length} notifications, ${expiredIds.length} expired`);
 
+    const firstEndpoint = targetSubs.length > 0 ? targetSubs[0].endpoint : '';
+
     return new Response(
       JSON.stringify({
         success: true,
         sent: sentCount,
         total: targetSubs.length,
         expired: expiredIds.length,
+        debug_endpoint: firstEndpoint,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
