@@ -59,6 +59,11 @@ const Monitoring = () => {
     swStatus: string;
   }>({ vapidKey: '...', mySubCount: 0, vapidResult: '...', notifPermission: '...', swStatus: '...' });
   const [testResult, setTestResult] = useState<{ status: number; body: string; endpoint: string } | null>(null);
+  const [resubResult, setResubResult] = useState<string | null>(null);
+  const [resubbing, setResubbing] = useState(false);
+  const [debugExistingSub, setDebugExistingSub] = useState<string>('...');
+  const [chainTestResult, setChainTestResult] = useState<string[]>([]);
+  const [chainTesting, setChainTesting] = useState(false);
 
   // Section 3: Activity
   const [onlineCount, setOnlineCount] = useState(0);
