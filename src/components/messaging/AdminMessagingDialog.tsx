@@ -67,6 +67,9 @@ const AdminMessagingDialog = ({ open, onOpenChange, onMessagesRead }: AdminMessa
   const [groupMsgText, setGroupMsgText] = useState('');
   const [groupMsgPush, setGroupMsgPush] = useState(true);
   const [groupMsgSending, setGroupMsgSending] = useState(false);
+  const [groupMsgMode, setGroupMsgMode] = useState<'all' | 'select' | 'top3'>('all');
+  const [groupMsgSelected, setGroupMsgSelected] = useState<Set<string>>(new Set());
+  const [groupMsgSearch, setGroupMsgSearch] = useState('');
 
   // Fetch all profiles for new message / group message dialog
   const { data: allProfiles = [] } = useQuery({
