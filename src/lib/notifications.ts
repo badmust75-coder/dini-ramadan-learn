@@ -31,10 +31,24 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
   return Notification.permission;
 }
 
-// VAPID public key from environment
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
+// Fetch VAPID public key from edge function (cached)
+let _vapidKeyCache: string | null = null;
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
+async function getVapidPublicKey(): Promise<string> {
+  if (_vapidKeyCache) return _vapidKeyCache;
+
+  try {
+    const { data, error } = await supabase.functions.invoke('get-vapid-key');
+    if (error) throw error;
+    _vapidKeyCache = data?.vapidPublicKey || '';
+    return _vapidKeyCache;
+  } catch (e) {
+    console.error('Failed to fetch VAPID key:', e);
+    return '';
+  }
+}
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding)
     .replace(/-/g, '+')
@@ -46,25 +60,24 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i);
   }
-  return outputArray as Uint8Array<ArrayBuffer>;
+  return outputArray;
 }
 
 export async function subscribeToPush(userId: string): Promise<boolean> {
   try {
     const registration = await navigator.serviceWorker.ready;
     
-    // Check if already subscribed
     let subscription = await (registration as any).pushManager.getSubscription();
     
     if (!subscription) {
-      // Create a new subscription with VAPID key
+      const vapidKey = await getVapidPublicKey();
+      
       const subscribeOptions: PushSubscriptionOptionsInit = {
         userVisibleOnly: true,
       };
       
-      // Add VAPID key if available
-      if (VAPID_PUBLIC_KEY) {
-        subscribeOptions.applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      if (vapidKey) {
+        subscribeOptions.applicationServerKey = urlBase64ToUint8Array(vapidKey) as any;
       }
       
       subscription = await (registration as any).pushManager.subscribe(subscribeOptions);
@@ -73,7 +86,6 @@ export async function subscribeToPush(userId: string): Promise<boolean> {
     if (subscription) {
       const subscriptionJson = subscription.toJSON();
       
-      // Save subscription to database
       const { error } = await supabase
         .from('push_subscriptions')
         .upsert({
@@ -108,7 +120,6 @@ export async function unsubscribeFromPush(userId: string): Promise<boolean> {
     if (subscription) {
       await subscription.unsubscribe();
       
-      // Remove from database
       await supabase
         .from('push_subscriptions')
         .delete()

@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, Moon, Clock, User, Shield } from 'lucide-react';
+import { Bell, Moon, Clock, User, Shield, Send } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import {
   registerServiceWorker,
@@ -32,6 +33,30 @@ const Settings = () => {
   const [maghribReminder, setMaghribReminder] = useState(true);
   const [ishaReminder, setIshaReminder] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [testingSend, setTestingSend] = useState(false);
+
+  const handleTestPush = async () => {
+    setTestingSend(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-push-notification', {
+        body: {
+          title: '🧪 Test notification',
+          body: 'Si tu vois ceci, les notifications push fonctionnent !',
+          type: 'admin',
+        },
+      });
+      if (error) throw error;
+      if (data?.sent > 0) {
+        toast({ title: `✅ Notification envoyée ! (${data.sent}/${data.total})` });
+      } else {
+        toast({ title: '⚠️ Aucun abonnement trouvé', description: `Total: ${data?.total || 0}, Expirés: ${data?.expired || 0}`, variant: 'destructive' });
+      }
+    } catch (err: any) {
+      toast({ title: '❌ Erreur', description: err?.message || String(err), variant: 'destructive' });
+    } finally {
+      setTestingSend(false);
+    }
+  };
 
   useEffect(() => {
     loadPreferences();
@@ -178,7 +203,26 @@ const Settings = () => {
           </Card>
         )}
 
-        {/* Notifications */}
+        {/* Admin Push Test */}
+        {isAdmin && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Send className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold">Test notification push</p>
+                  <p className="text-sm text-muted-foreground">Envoie une notification à toi-même</p>
+                </div>
+                <Button size="sm" onClick={handleTestPush} disabled={testingSend}>
+                  {testingSend ? '⏳' : '🧪 Tester'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
