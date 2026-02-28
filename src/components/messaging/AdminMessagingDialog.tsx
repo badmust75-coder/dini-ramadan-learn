@@ -317,6 +317,18 @@ const AdminMessagingDialog = ({ open, onOpenChange, onMessagesRead }: AdminMessa
     return p.full_name?.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q);
   });
 
+  const filtered = conversations.filter(c => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return c.profile.full_name?.toLowerCase().includes(q) || c.profile.email?.toLowerCase().includes(q);
+  });
+
+  const filteredNewMsgProfiles = allProfiles.filter(p => {
+    if (!newMsgSearch) return true;
+    const q = newMsgSearch.toLowerCase();
+    return p.full_name?.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q);
+  });
+
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
