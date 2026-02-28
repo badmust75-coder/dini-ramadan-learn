@@ -153,13 +153,24 @@ const Monitoring = () => {
     const perm = 'Notification' in window ? Notification.permission : 'non supporté';
     setDebugPush(prev => ({ ...prev, notifPermission: perm }));
 
-    // Debug: SW status
+    // Debug: SW status + existing subscription
     if ('serviceWorker' in navigator) {
       const reg = await navigator.serviceWorker.getRegistration();
       const swState = reg?.active ? 'active' : reg?.installing ? 'installing' : reg?.waiting ? 'waiting' : 'inactive';
       setDebugPush(prev => ({ ...prev, swStatus: reg ? `registered (${swState})` : 'non enregistré' }));
+      
+      // Check existing pushManager subscription
+      if (reg) {
+        try {
+          const sub = await (reg as any).pushManager?.getSubscription();
+          setDebugExistingSub(sub ? sub.endpoint.substring(0, 30) + '...' : 'null (aucune)');
+        } catch { setDebugExistingSub('erreur lecture'); }
+      } else {
+        setDebugExistingSub('pas de SW');
+      }
     } else {
       setDebugPush(prev => ({ ...prev, swStatus: 'non supporté' }));
+      setDebugExistingSub('non supporté');
     }
   }, [user?.id]);
 
