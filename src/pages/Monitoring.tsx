@@ -119,7 +119,43 @@ const Monitoring = () => {
 
     const { data: hist } = await supabase.from('notification_history').select('*').order('created_at', { ascending: false }).limit(10);
     setNotifHistory(hist || []);
-  }, []);
+
+    // Debug: my subscriptions count
+    if (user?.id) {
+      const { count: myCount } = await supabase.from('push_subscriptions').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
+      setDebugPush(prev => ({ ...prev, mySubCount: myCount || 0 }));
+    }
+
+    // Debug: VAPID key test
+    try {
+      const { data: vapidData, error: vapidError } = await supabase.functions.invoke('get-vapid-key');
+      if (vapidError) {
+        setDebugPush(prev => ({ ...prev, vapidResult: '❌ ' + vapidError.message, vapidKey: 'Erreur' }));
+      } else {
+        const key = vapidData?.vapidPublicKey || '';
+        setDebugPush(prev => ({
+          ...prev,
+          vapidResult: key ? '✅ Clé reçue' : '⚠️ Clé vide',
+          vapidKey: key ? key.substring(0, 20) + '...' : '(vide)'
+        }));
+      }
+    } catch (e: any) {
+      setDebugPush(prev => ({ ...prev, vapidResult: '❌ ' + e.message, vapidKey: 'Erreur' }));
+    }
+
+    // Debug: notification permission
+    const perm = 'Notification' in window ? Notification.permission : 'non supporté';
+    setDebugPush(prev => ({ ...prev, notifPermission: perm }));
+
+    // Debug: SW status
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      const swState = reg?.active ? 'active' : reg?.installing ? 'installing' : reg?.waiting ? 'waiting' : 'inactive';
+      setDebugPush(prev => ({ ...prev, swStatus: reg ? `registered (${swState})` : 'non enregistré' }));
+    } else {
+      setDebugPush(prev => ({ ...prev, swStatus: 'non supporté' }));
+    }
+  }, [user?.id]);
 
   const loadActivity = useCallback(async () => {
     const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -199,21 +235,32 @@ const Monitoring = () => {
 
   const handleTestPush = async () => {
     setTestingSend(true);
+    setTestResult(null);
     try {
       const { data, error } = await supabase.functions.invoke('send-push-notification', {
         body: { title: '🧪 Test Monitoring', body: 'Notification de test depuis le monitoring', type: 'admin' }
       });
-      if (error) throw error;
-      toast({ title: '✅ Notification envoyée', description: `${data?.sent || 0}/${data?.total || 0} reçue(s)` });
-      // Save to history
-      await supabase.from('notification_history').insert({
-        title: '🧪 Test Monitoring', body: 'Test depuis monitoring', type: 'test',
-        sent_by: user?.id, total_recipients: data?.total || 0,
-        successful_sends: data?.sent || 0, failed_sends: data?.failed || 0,
-        expired_cleaned: data?.expired || 0
-      });
-      loadPushData();
+      if (error) {
+        setTestResult({ status: 0, body: JSON.stringify(error, null, 2), endpoint: 'N/A' });
+        toast({ title: '❌ Erreur', description: error.message, variant: 'destructive' });
+      } else {
+        setTestResult({ 
+          status: 200, 
+          body: JSON.stringify(data, null, 2), 
+          endpoint: data?.debug_endpoint ? data.debug_endpoint.substring(0, 20) + '...' : 'N/A'
+        });
+        toast({ title: '✅ Notification envoyée', description: `${data?.sent || 0}/${data?.total || 0} reçue(s)` });
+        // Save to history
+        await supabase.from('notification_history').insert({
+          title: '🧪 Test Monitoring', body: 'Test depuis monitoring', type: 'test',
+          sent_by: user?.id, total_recipients: data?.total || 0,
+          successful_sends: data?.sent || 0, failed_sends: data?.failed || 0,
+          expired_cleaned: data?.expired || 0
+        });
+        loadPushData();
+      }
     } catch (e: any) {
+      setTestResult({ status: 0, body: e.message, endpoint: 'N/A' });
       toast({ title: '❌ Erreur', description: e.message, variant: 'destructive' });
     }
     setTestingSend(false);
@@ -344,6 +391,22 @@ const Monitoring = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Debug Push Card */}
+            <div className="border-2 border-dashed border-orange-300 dark:border-orange-700 rounded-lg p-3 bg-orange-50/50 dark:bg-orange-950/20 space-y-2">
+              <p className="text-sm font-bold flex items-center gap-1">🔍 Debug Push</p>
+              <div className="grid grid-cols-1 gap-1 text-xs font-mono">
+                <div className="flex justify-between"><span className="text-muted-foreground">VAPID Key :</span><span className="truncate ml-2">{debugPush.vapidKey}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Mes abonnements :</span><span>{debugPush.mySubCount}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">get-vapid-key :</span><span>{debugPush.vapidResult}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Permission :</span>
+                  <span className={debugPush.notifPermission === 'granted' ? 'text-emerald-600' : debugPush.notifPermission === 'denied' ? 'text-red-600' : 'text-orange-600'}>
+                    {debugPush.notifPermission}
+                  </span>
+                </div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Service Worker :</span><span>{debugPush.swStatus}</span></div>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between">
               <span className="text-sm">Abonnés actifs</span>
               <Badge variant="secondary" className="text-lg px-3">{pushCount}</Badge>
@@ -352,6 +415,19 @@ const Monitoring = () => {
             <Button onClick={handleTestPush} disabled={testingSend} size="sm" className="w-full">
               {testingSend ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : '🧪'} Envoyer notification test à moi-même
             </Button>
+
+            {/* Test result inline */}
+            {testResult && (
+              <div className="border rounded-lg p-3 bg-muted/50 space-y-1 text-xs font-mono">
+                <p className="font-bold text-sm">📋 Résultat du test :</p>
+                <div className="flex justify-between"><span className="text-muted-foreground">Statut HTTP :</span><span className={testResult.status === 200 ? 'text-emerald-600' : 'text-red-600'}>{testResult.status || 'Erreur'}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Endpoint :</span><span>{testResult.endpoint}</span></div>
+                <div>
+                  <span className="text-muted-foreground">Réponse :</span>
+                  <pre className="mt-1 whitespace-pre-wrap text-[10px] bg-background p-2 rounded border max-h-32 overflow-auto">{testResult.body}</pre>
+                </div>
+              </div>
+            )}
 
             <div className="border rounded-lg p-3 space-y-2">
               <p className="text-sm font-medium">📢 Notification à tous les élèves</p>
