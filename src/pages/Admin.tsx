@@ -27,7 +27,7 @@ import AdminRamadanQuizTracking from '@/components/admin/AdminRamadanQuizTrackin
 import AdminHomework from '@/components/admin/AdminHomework';
 import AdminAttendance from '@/components/admin/AdminAttendance';
 
-import AdminOnlineUsers from '@/components/admin/AdminOnlineUsers';
+
 import ConfirmDeleteDialog from '@/components/ui/confirm-delete-dialog';
 import { 
   Users, GraduationCap, Moon, Sparkles, BookOpen, MessageSquare, 
@@ -477,8 +477,7 @@ const Admin = () => {
   return (
     <AppLayout title="Tableau de bord">
       <div className="p-4 space-y-4">
-        {/* Real-time online users monitoring */}
-        <AdminOnlineUsers />
+        {/* Validation cards in 2x2 grid */}
 
         {/* Validation cards in 2x2 grid */}
         <div className="grid grid-cols-2 gap-3">

@@ -112,6 +112,9 @@ const Header = ({
           pendingSourates={pendingCounts.sourates}
           pendingNourania={pendingCounts.nourania}
           pendingInvocations={pendingCounts.invocations}
+          pendingMessages={pendingCounts.messages}
+          pendingHomework={pendingCounts.homework}
+          total={pendingCounts.total}
         />
       )}
 

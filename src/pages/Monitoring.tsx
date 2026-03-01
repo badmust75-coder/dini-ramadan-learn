@@ -14,6 +14,8 @@ import {
   RefreshCw, CheckCircle, XCircle, Users, MessageSquare,
   BarChart3, Clock, Loader2, UserCheck, ClipboardCheck, Sparkles, Hand
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import AdminOnlineUsers from '@/components/admin/AdminOnlineUsers';
 import { format, subDays, startOfWeek, startOfMonth } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
@@ -54,10 +56,11 @@ const Monitoring = () => {
   const [osStatus, setOsStatus] = useState<{ permission: string; subscribed: boolean; userId: string | null }>({ permission: '...', subscribed: false, userId: null });
   const [testResult, setTestResult] = useState<{ status: number; body: string } | null>(null);
 
-  // Section 3: Activity
+   // Section 3: Activity
   const [onlineCount, setOnlineCount] = useState(0);
   const [recentActions, setRecentActions] = useState<any[]>([]);
   const [activityChart, setActivityChart] = useState<any[]>([]);
+  const [showOnlineModal, setShowOnlineModal] = useState(false);
 
   // Section 4: DB Health
   const [dbStats, setDbStats] = useState({
@@ -271,65 +274,69 @@ const Monitoring = () => {
           </div>
         </div>
 
-        {/* SECTION 1: Application Status */}
+        {/* SECTION 1: Real-time Activity */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Activity className="h-5 w-5 text-primary" /> Statut de l'application
+              <Users className="h-5 w-5 text-primary" /> Activité en temps réel
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {[
-              { label: 'Connexion Base de données', ok: status.supabase },
-              { label: 'Fonctions backend', ok: status.edgeFn },
-              { label: 'Service Worker PWA', ok: status.sw },
-              { label: 'OneSignal Push', ok: status.push },
-            ].map(s => (
-              <div key={s.label} className="flex items-center justify-between py-1">
-                <span className="text-sm">{s.label}</span>
-                <StatusDot ok={s.ok} />
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Utilisateurs en ligne</span>
+              <button onClick={() => setShowOnlineModal(true)}>
+                <Badge className="bg-emerald-500 text-lg px-3 cursor-pointer hover:bg-emerald-600 transition-colors">{onlineCount}</Badge>
+              </button>
+            </div>
+
+            {activityChart.length > 0 && (
+              <div>
+                <p className="text-sm font-medium mb-2">📈 Connexions des 7 derniers jours</p>
+                <ResponsiveContainer width="100%" height={220}>
+                  <ComposedChart data={activityChart}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                    <XAxis dataKey="day" fontSize={12} />
+                    <YAxis fontSize={12} allowDecimals={false} />
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload?.length) return null;
+                        return (
+                          <div className="bg-background border rounded-lg px-3 py-2 shadow-lg text-sm">
+                            <p className="font-medium">{label} : {payload[0].value} connexions</p>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Bar dataKey="connexions" radius={[4, 4, 0, 0]}>
+                      <LabelList dataKey="connexions" position="top" fontSize={11} fontWeight="bold" />
+                      {activityChart.map((entry, index) => {
+                        const max = Math.max(...activityChart.map(e => e.connexions), 1);
+                        const ratio = entry.connexions / max;
+                        const hue = 210 + ratio * 30;
+                        return <Cell key={index} fill={`hsl(${hue}, 70%, ${50 - ratio * 15}%)`} />;
+                      })}
+                    </Bar>
+                    <Line type="monotone" dataKey="connexions" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} strokeDasharray="5 5" />
+                  </ComposedChart>
+                </ResponsiveContainer>
               </div>
-            ))}
+            )}
           </CardContent>
         </Card>
 
-        {/* SECTION 1.5: Validations en attente */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              ✅ Validations en attente
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: 'Inscriptions', count: validationCounts.registrations, icon: UserCheck, section: 'registration-validations' },
-                { label: 'Sourates', count: validationCounts.sourates, icon: ClipboardCheck, section: 'sourates-validations' },
-                { label: 'Nourania', count: validationCounts.nourania, icon: Sparkles, section: 'nourania-validations' },
-                { label: 'Invocations', count: validationCounts.invocations, icon: Hand, section: 'invocations-validations' },
-              ].map((item) => {
-                const Icon = item.icon;
-                const hasPending = item.count > 0;
-                return (
-                  <button
-                    key={item.section}
-                    onClick={() => navigate(`/admin?section=${item.section}`)}
-                    className={`rounded-xl p-3 border transition-all text-center ${
-                      hasPending
-                        ? 'bg-destructive/10 border-destructive/30 hover:bg-destructive/20'
-                        : 'bg-emerald-500/10 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-500/20'
-                    }`}
-                  >
-                    <Icon className={`h-5 w-5 mx-auto mb-1 ${hasPending ? 'text-destructive' : 'text-emerald-500'}`} />
-                    <p className={`text-xs font-medium ${hasPending ? 'text-destructive' : 'text-emerald-700 dark:text-emerald-300'}`}>{item.label}</p>
-                    <p className={`text-xl font-bold ${hasPending ? 'text-destructive' : 'text-emerald-600'}`}>{item.count}</p>
-                    {hasPending && <Badge className="bg-destructive text-destructive-foreground text-[10px] px-1.5 mt-1 animate-pulse">{item.count}</Badge>}
-                  </button>
-                );
-              })}
+        {/* Online Users Modal */}
+        <Dialog open={showOnlineModal} onOpenChange={setShowOnlineModal}>
+          <DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                👥 Utilisateurs en ligne
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-auto">
+              <AdminOnlineUsers />
             </div>
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
 
         {/* SECTION 2: Push Notifications (OneSignal) */}
         <Card>
@@ -339,7 +346,6 @@ const Monitoring = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* OneSignal Status */}
             <div className="border rounded-lg p-3 bg-muted/30 space-y-2">
               <p className="text-sm font-bold">📡 Statut OneSignal</p>
               <div className="grid grid-cols-1 gap-1 text-xs font-mono">
@@ -366,7 +372,6 @@ const Monitoring = () => {
               {testingSend ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : '🧪'} Envoyer notification test à moi-même
             </Button>
 
-            {/* Test result inline */}
             {testResult && (
               <div className="border rounded-lg p-3 bg-muted/50 space-y-1 text-xs font-mono">
                 <p className="font-bold text-sm">📋 Résultat du test :</p>
@@ -412,51 +417,41 @@ const Monitoring = () => {
           </CardContent>
         </Card>
 
-        {/* SECTION 3: Real-time Activity */}
+        {/* SECTION 3: Validations en attente */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Users className="h-5 w-5 text-primary" /> Activité en temps réel
+              ✅ Validations en attente
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Utilisateurs en ligne</span>
-              <Badge className="bg-emerald-500 text-lg px-3">{onlineCount}</Badge>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: 'Inscriptions', count: validationCounts.registrations, icon: UserCheck, section: 'registration-validations' },
+                { label: 'Sourates', count: validationCounts.sourates, icon: ClipboardCheck, section: 'sourates-validations' },
+                { label: 'Nourania', count: validationCounts.nourania, icon: Sparkles, section: 'nourania-validations' },
+                { label: 'Invocations', count: validationCounts.invocations, icon: Hand, section: 'invocations-validations' },
+              ].map((item) => {
+                const Icon = item.icon;
+                const hasPending = item.count > 0;
+                return (
+                  <button
+                    key={item.section}
+                    onClick={() => navigate(`/admin?section=${item.section}`)}
+                    className={`rounded-xl p-3 border transition-all text-center ${
+                      hasPending
+                        ? 'bg-destructive/10 border-destructive/30 hover:bg-destructive/20'
+                        : 'bg-emerald-500/10 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-500/20'
+                    }`}
+                  >
+                    <Icon className={`h-5 w-5 mx-auto mb-1 ${hasPending ? 'text-destructive' : 'text-emerald-500'}`} />
+                    <p className={`text-xs font-medium ${hasPending ? 'text-destructive' : 'text-emerald-700 dark:text-emerald-300'}`}>{item.label}</p>
+                    <p className={`text-xl font-bold ${hasPending ? 'text-destructive' : 'text-emerald-600'}`}>{item.count}</p>
+                    {hasPending && <Badge className="bg-destructive text-destructive-foreground text-[10px] px-1.5 mt-1 animate-pulse">{item.count}</Badge>}
+                  </button>
+                );
+              })}
             </div>
-
-            {activityChart.length > 0 && (
-              <div>
-                <p className="text-sm font-medium mb-2">📈 Connexions des 7 derniers jours</p>
-                <ResponsiveContainer width="100%" height={220}>
-                  <ComposedChart data={activityChart}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                    <XAxis dataKey="day" fontSize={12} />
-                    <YAxis fontSize={12} allowDecimals={false} />
-                    <Tooltip
-                      content={({ active, payload, label }) => {
-                        if (!active || !payload?.length) return null;
-                        return (
-                          <div className="bg-background border rounded-lg px-3 py-2 shadow-lg text-sm">
-                            <p className="font-medium">{label} : {payload[0].value} connexions</p>
-                          </div>
-                        );
-                      }}
-                    />
-                    <Bar dataKey="connexions" radius={[4, 4, 0, 0]}>
-                      <LabelList dataKey="connexions" position="top" fontSize={11} fontWeight="bold" />
-                      {activityChart.map((entry, index) => {
-                        const max = Math.max(...activityChart.map(e => e.connexions), 1);
-                        const ratio = entry.connexions / max;
-                        const hue = 210 + ratio * 30;
-                        return <Cell key={index} fill={`hsl(${hue}, 70%, ${50 - ratio * 15}%)`} />;
-                      })}
-                    </Bar>
-                    <Line type="monotone" dataKey="connexions" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} strokeDasharray="5 5" />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -496,7 +491,29 @@ const Monitoring = () => {
           </CardContent>
         </Card>
 
-        {/* SECTION 5: Error Logs */}
+        {/* SECTION 5: Application Status */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" /> Statut de l'application
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {[
+              { label: 'Connexion Base de données', ok: status.supabase },
+              { label: 'Fonctions backend', ok: status.edgeFn },
+              { label: 'Service Worker PWA', ok: status.sw },
+              { label: 'OneSignal Push', ok: status.push },
+            ].map(s => (
+              <div key={s.label} className="flex items-center justify-between py-1">
+                <span className="text-sm">{s.label}</span>
+                <StatusDot ok={s.ok} />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* SECTION 6: Error Logs */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
