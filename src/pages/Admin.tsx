@@ -29,12 +29,13 @@ import AdminAttendance from '@/components/admin/AdminAttendance';
 
 
 import ConfirmDeleteDialog from '@/components/ui/confirm-delete-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   Users, GraduationCap, Moon, Sparkles, BookOpen, MessageSquare, 
   BookMarked, Hand, Settings, Mail, ClipboardCheck, UserCheck,
   Plus, GripVertical, Trash2,
   FileText, List, Video, Star, Heart, Bell, Calendar, Image, Music,
-  ClipboardList, LayoutGrid, Book, Scroll
+  ClipboardList, LayoutGrid, Book, Scroll, Eye, Wrench
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -514,9 +515,50 @@ const Admin = () => {
           <SortableContext items={orderedCards.map(c => c.id)} strategy={verticalListSortingStrategy}>
             <div className="grid grid-cols-2 min-[400px]:grid-cols-3 gap-3">
               {orderedCards.map((item) => {
-                if (item.type === 'static') {
+               if (item.type === 'static') {
                   const card = STATIC_CARDS.find(c => c.key === item.key);
                   if (!card) return null;
+                  const hasMultipleActions = !!(card as any).manageView;
+                  
+                  if (hasMultipleActions) {
+                    return (
+                      <SortableCard key={item.id} id={item.id}>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <div>
+                              <AdminModuleCard
+                                title={card.title}
+                                icon={card.icon}
+                                value={card.value}
+                                subtitle={card.subtitle}
+                                color={card.color}
+                                bgColor={card.bgColor}
+                                cardBgColor={card.cardBgColor}
+                                onClick={() => {}}
+                              />
+                            </div>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-52 p-1.5" align="center" sideOffset={6}>
+                            <button
+                              className="flex items-center gap-2 w-full rounded-md px-3 py-2.5 text-sm hover:bg-muted transition-colors text-left"
+                              onClick={() => setCurrentView(card.view)}
+                            >
+                              <Eye className="h-4 w-4 text-primary" />
+                              📖 Voir progression
+                            </button>
+                            <button
+                              className="flex items-center gap-2 w-full rounded-md px-3 py-2.5 text-sm hover:bg-muted transition-colors text-left"
+                              onClick={() => setCurrentView((card as any).manageView)}
+                            >
+                              <Wrench className="h-4 w-4 text-muted-foreground" />
+                              ⚙️ Gérer le contenu
+                            </button>
+                          </PopoverContent>
+                        </Popover>
+                      </SortableCard>
+                    );
+                  }
+
                   return (
                     <SortableCard key={item.id} id={item.id}>
                       <AdminModuleCard
