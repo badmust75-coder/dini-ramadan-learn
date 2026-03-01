@@ -14,6 +14,8 @@ import {
   RefreshCw, CheckCircle, XCircle, Users, MessageSquare,
   BarChart3, Clock, Loader2, UserCheck, ClipboardCheck, Sparkles, Hand
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import AdminOnlineUsers from '@/components/admin/AdminOnlineUsers';
 import { format, subDays, startOfWeek, startOfMonth } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {

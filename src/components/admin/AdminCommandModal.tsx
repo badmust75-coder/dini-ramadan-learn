@@ -11,6 +11,9 @@ interface AdminCommandModalProps {
   pendingSourates: number;
   pendingNourania: number;
   pendingInvocations: number;
+  pendingMessages: number;
+  pendingHomework: number;
+  total: number;
 }
 
 const AdminCommandModal = ({
