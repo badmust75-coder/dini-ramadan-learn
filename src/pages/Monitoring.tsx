@@ -80,12 +80,11 @@ const Monitoring = () => {
       setStatus(s => ({ ...s, supabase: !error }));
     } catch { setStatus(s => ({ ...s, supabase: false })); }
 
-    // Edge function
+    // Edge function health check (no notification sent)
     try {
       const { error } = await supabase.functions.invoke('send-push-notification', {
-        body: { title: 'ping', body: 'ping', type: 'admin' }
+        body: { title: 'health-check', body: 'health-check', type: 'health-check' }
       });
-      // Just check if edge function responds (even with error about no subs)
       setStatus(s => ({ ...s, edgeFn: true }));
     } catch { setStatus(s => ({ ...s, edgeFn: false })); }
 
