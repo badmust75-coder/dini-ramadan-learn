@@ -190,7 +190,7 @@ const Index = () => {
                 <p className="text-sm font-medium text-foreground">🔔 Active les notifications pour ne rien manquer !</p>
               </div>
               <div className="flex gap-2 shrink-0">
-                <Button size="sm" variant="ghost" onClick={() => setShowNotifBanner(false)}>
+                <Button size="sm" variant="ghost" onClick={handleDismissNotifBanner}>
                   Plus tard
                 </Button>
                 <Button size="sm" onClick={handleActivateNotifications} disabled={activatingNotif}>
