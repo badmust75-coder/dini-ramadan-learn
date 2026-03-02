@@ -1095,6 +1095,7 @@ export type Database = {
           notification_prompt_dismissed: string | null
           notification_prompt_later_at: string | null
           notification_prompt_later_count: number | null
+          prayer_group: string | null
           updated_at: string
           user_id: string
         }
@@ -1113,6 +1114,7 @@ export type Database = {
           notification_prompt_dismissed?: string | null
           notification_prompt_later_at?: string | null
           notification_prompt_later_count?: number | null
+          prayer_group?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1131,6 +1133,7 @@ export type Database = {
           notification_prompt_dismissed?: string | null
           notification_prompt_later_at?: string | null
           notification_prompt_later_count?: number | null
+          prayer_group?: string | null
           updated_at?: string
           user_id?: string
         }

@@ -171,7 +171,7 @@ const AdminOnlineUsers = () => {
       </div>
 
       {/* User list */}
-      <ScrollArea className="max-h-[70vh]">
+      <div className="overflow-y-auto" style={{ maxHeight: 'calc(80vh - 120px)' }}>
         <div className="divide-y divide-border/50">
           {sortedUsers.length === 0 ? (
             <div className="py-6 text-center text-sm text-muted-foreground">
@@ -226,7 +226,7 @@ const AdminOnlineUsers = () => {
             })
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 };
