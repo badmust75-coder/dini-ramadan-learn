@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Bell, Moon, Clock, User, Shield, Send } from 'lucide-react';
+import PushDiagnostic from '@/components/settings/PushDiagnostic';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -245,6 +246,11 @@ const Settings = () => {
                 </div>
               </div>
             )}
+
+            {/* Diagnostic */}
+            <div className="border-t pt-4">
+              <PushDiagnostic />
+            </div>
 
             {notificationsEnabled && (
               <>
