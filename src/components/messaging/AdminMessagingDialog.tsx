@@ -562,10 +562,11 @@ const AdminMessagingDialog = ({ open, onOpenChange, onMessagesRead }: AdminMessa
                   { value: 'all' as const, label: '👥 Tous les élèves', desc: `${allProfiles.length} élève${allProfiles.length > 1 ? 's' : ''}` },
                   { value: 'select' as const, label: '🎯 Sélectionner des élèves', desc: 'Choisir manuellement' },
                   { value: 'top3' as const, label: '🏆 Top classement', desc: 'Les 3 premiers' },
+                  { value: 'groups' as const, label: '📂 Sélectionner des groupes', desc: `${studentGroups.length} groupe${studentGroups.length > 1 ? 's' : ''}` },
                 ].map(opt => (
                   <div
                     key={opt.value}
-                    onClick={() => { setGroupMsgMode(opt.value); if (opt.value !== 'select') setGroupMsgSelected(new Set()); }}
+                    onClick={() => { setGroupMsgMode(opt.value); if (opt.value !== 'select') setGroupMsgSelected(new Set()); if (opt.value !== 'groups') setGroupMsgSelectedGroups(new Set()); }}
                     className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-all ${
                       groupMsgMode === opt.value ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
                     }`}
