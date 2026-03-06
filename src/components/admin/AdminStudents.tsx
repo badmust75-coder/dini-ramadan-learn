@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import AdminStudentGroups from './AdminStudentGroups';
 
 interface StudentProgress {
   sourates: { validated: number; total: number };
@@ -129,7 +130,15 @@ const AdminStudents = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Groups section */}
+      <AdminStudentGroups />
+
+      {/* Separator */}
+      <div className="border-t pt-4">
+        <h3 className="text-base font-semibold text-foreground mb-3">📋 Liste des élèves</h3>
+      </div>
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
