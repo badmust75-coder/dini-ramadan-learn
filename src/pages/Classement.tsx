@@ -11,13 +11,13 @@ import { useEffect, useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-type GroupFilter = 'global' | 'Petits' | 'Jeunes' | 'Adultes';
+type GroupFilter = 'global' | 'petits' | 'jeunes' | 'adultes';
 
 const GROUP_FILTERS: { key: GroupFilter; label: string; icon: string }[] = [
   { key: 'global', label: 'Global', icon: '🌍' },
-  { key: 'Petits', label: 'Petits', icon: '🧒' },
-  { key: 'Jeunes', label: 'Jeunes', icon: '🧑' },
-  { key: 'Adultes', label: 'Adultes', icon: '👤' },
+  { key: 'petits', label: 'Petits', icon: '🧒' },
+  { key: 'jeunes', label: 'Jeunes', icon: '🧑' },
+  { key: 'adultes', label: 'Adultes', icon: '👤' },
 ];
 
 interface RankingEntry {
