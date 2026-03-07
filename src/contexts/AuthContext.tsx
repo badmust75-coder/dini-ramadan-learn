@@ -58,46 +58,81 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+
+    // SAFETY TIMEOUT: loading passes to false after 2s max no matter what
+    const safetyTimer = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 2000);
+
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!mounted) return;
+
+        if (session?.user) {
+          setSession(session);
+          setUser(session.user);
+          setLoading(false);
+          clearTimeout(safetyTimer);
+
+          // Roles in background, never block rendering
+          checkAdminRole(session.user.id).then(val => {
+            if (mounted) setIsAdmin(val);
+          });
+          checkApprovalStatus(session.user.id).then(val => {
+            if (mounted) {
+              checkAdminRole(session.user.id).then(isAdm => {
+                if (mounted) setIsApproved(isAdm ? true : val);
+              });
+            }
+          });
+
+          // Update last_seen silently
+          (supabase as any).from('profiles').update({ last_seen: new Date().toISOString() }).eq('user_id', session.user.id);
+        } else {
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          clearTimeout(safetyTimer);
+        }
+      } catch (err) {
+        console.error('Auth init error:', err);
+        if (mounted) setLoading(false);
+        clearTimeout(safetyTimer);
+      }
+    };
+
+    initAuth();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!mounted) return;
         setSession(session);
-        setUser(session?.user ?? null);
-        
         if (session?.user) {
-          // Use setTimeout to avoid blocking the auth state change callback
-          setTimeout(async () => {
-            const [adminStatus, approvalStatus] = await Promise.all([
-              checkAdminRole(session.user.id),
-              checkApprovalStatus(session.user.id),
-            ]);
-            setIsAdmin(adminStatus);
-            setIsApproved(adminStatus ? true : approvalStatus);
-          }, 0);
+          setUser(session.user);
+          checkAdminRole(session.user.id).then(val => {
+            if (mounted) setIsAdmin(val);
+          });
+          checkApprovalStatus(session.user.id).then(val => {
+            if (mounted) {
+              checkAdminRole(session.user.id).then(isAdm => {
+                if (mounted) setIsApproved(isAdm ? true : val);
+              });
+            }
+          });
         } else {
+          setUser(null);
           setIsAdmin(false);
           setIsApproved(null);
         }
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-
-      if (session?.user) {
-        Promise.all([
-          checkAdminRole(session.user.id),
-          checkApprovalStatus(session.user.id),
-        ]).then(([adminStatus, approvalStatus]) => {
-          setIsAdmin(adminStatus);
-          setIsApproved(adminStatus ? true : approvalStatus);
-        });
-        (supabase as any).from('profiles').update({ last_seen: new Date().toISOString() }).eq('user_id', session.user.id);
-      }
-    });
-
     return () => {
+      mounted = false;
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, [checkAdminRole, checkApprovalStatus]);
