@@ -7,7 +7,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { usePrayerTimesCity, CITIES, CityOption } from '@/hooks/usePrayerTimesCity';
+import { usePrayerTimesCity, PRIORITY_CITIES, OTHER_CITIES, CITIES, CityOption } from '@/hooks/usePrayerTimesCity';
 import SunArcDisplay from '@/components/prayer/SunArcDisplay';
 import QiblaCompass from '@/components/prayer/QiblaCompass';
 import PrayerWeeklyCalendar from '@/components/prayer/PrayerWeeklyCalendar';
@@ -113,7 +113,22 @@ const Priere = () => {
               </button>
               {showCitySelector && (
                 <div className="absolute top-full left-0 right-0 z-30 mt-1 bg-card border border-border rounded-xl shadow-elevated max-h-56 overflow-y-auto">
-                  {CITIES.map((city) => (
+                  <div className="px-4 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/30 sticky top-0">── Votre région ──</div>
+                  {PRIORITY_CITIES.map((city) => (
+                    <button
+                      key={city.label}
+                      onClick={() => { setSelectedCity(city); setShowCitySelector(false); }}
+                      className={cn(
+                        'w-full text-left px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors flex items-center gap-2',
+                        selectedCity.label === city.label && 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 font-medium'
+                      )}
+                    >
+                      <span className="flex-1">{city.label}</span>
+                      <span className="text-xs text-muted-foreground">{city.country}</span>
+                    </button>
+                  ))}
+                  <div className="px-4 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/30 sticky top-0">── France & International ──</div>
+                  {OTHER_CITIES.map((city) => (
                     <button
                       key={city.label}
                       onClick={() => { setSelectedCity(city); setShowCitySelector(false); }}
