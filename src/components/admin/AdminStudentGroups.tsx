@@ -36,6 +36,21 @@ interface StudentGroup {
   members: { user_id: string; full_name: string | null; email: string | null }[];
 }
 
+type AgeFilter = 'tous' | 'petits' | 'jeunes' | 'adultes';
+type GenderFilter = 'tous' | 'fille' | 'garcon';
+
+const getAgeGroup = (dateOfBirth: string | null): string => {
+  if (!dateOfBirth) return 'inconnu';
+  const birth = new Date(dateOfBirth);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  if (age < 10) return 'petits';
+  if (age < 16) return 'jeunes';
+  return 'adultes';
+};
+
 const AdminStudentGroups = () => {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -45,6 +60,8 @@ const AdminStudentGroups = () => {
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [studentSearch, setStudentSearch] = useState('');
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [ageFilter, setAgeFilter] = useState<AgeFilter>('tous');
+  const [genderFilter, setGenderFilter] = useState<GenderFilter>('tous');
 
   // Fetch groups with members
   const { data: groups = [] } = useQuery({
@@ -80,18 +97,18 @@ const AdminStudentGroups = () => {
     },
   });
 
-  // Fetch all students for selection
+  // Fetch all students for selection (including gender and date_of_birth)
   const { data: allStudents = [] } = useQuery({
     queryKey: ['all-students-for-groups'],
     queryFn: async () => {
-      const { data: profiles } = await supabase
+      const { data: profiles } = await (supabase as any)
         .from('profiles')
-        .select('user_id, full_name, email')
+        .select('user_id, full_name, email, gender, date_of_birth')
         .eq('is_approved', true)
         .order('full_name');
       const { data: adminRoles } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
       const adminIds = new Set((adminRoles || []).map(r => r.user_id));
-      return (profiles || []).filter(p => !adminIds.has(p.user_id));
+      return (profiles || []).filter((p: any) => !adminIds.has(p.user_id));
     },
     enabled: dialogOpen,
   });
@@ -99,14 +116,12 @@ const AdminStudentGroups = () => {
   const createOrUpdateMutation = useMutation({
     mutationFn: async () => {
       if (editingGroup) {
-        // Update
         const { error } = await (supabase as any)
           .from('student_groups')
           .update({ name: groupName, color: groupColor, updated_at: new Date().toISOString() })
           .eq('id', editingGroup.id);
         if (error) throw error;
 
-        // Replace members
         await (supabase as any).from('student_group_members').delete().eq('group_id', editingGroup.id);
         if (selectedStudents.size > 0) {
           const inserts = Array.from(selectedStudents).map(uid => ({ group_id: editingGroup.id, user_id: uid }));
@@ -114,7 +129,6 @@ const AdminStudentGroups = () => {
           if (e2) throw e2;
         }
       } else {
-        // Create
         const maxOrder = groups.length > 0 ? Math.max(...groups.map(g => g.display_order)) + 1 : 0;
         const { data: newGroup, error } = await (supabase as any)
           .from('student_groups')
@@ -166,6 +180,8 @@ const AdminStudentGroups = () => {
     setGroupColor('bg-blue-500');
     setSelectedStudents(new Set());
     setStudentSearch('');
+    setAgeFilter('tous');
+    setGenderFilter('tous');
   };
 
   const openEdit = (group: StudentGroup) => {
@@ -190,10 +206,18 @@ const AdminStudentGroups = () => {
     setDraggedId(null);
   };
 
-  const filteredStudents = allStudents.filter(s => {
-    if (!studentSearch) return true;
-    const q = studentSearch.toLowerCase();
-    return s.full_name?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q);
+  const filteredStudents = allStudents.filter((s: any) => {
+    if (studentSearch) {
+      const q = studentSearch.toLowerCase();
+      if (!s.full_name?.toLowerCase().includes(q) && !s.email?.toLowerCase().includes(q)) return false;
+    }
+    if (ageFilter !== 'tous') {
+      if (getAgeGroup(s.date_of_birth) !== ageFilter) return false;
+    }
+    if (genderFilter !== 'tous') {
+      if (s.gender !== genderFilter) return false;
+    }
+    return true;
   });
 
   return (
@@ -310,13 +334,57 @@ const AdminStudentGroups = () => {
                 <Button
                   variant="ghost" size="sm" className="text-xs h-7"
                   onClick={() => {
-                    if (selectedStudents.size === allStudents.length) setSelectedStudents(new Set());
-                    else setSelectedStudents(new Set(allStudents.map(s => s.user_id)));
+                    if (selectedStudents.size === filteredStudents.length && filteredStudents.length > 0) setSelectedStudents(new Set());
+                    else setSelectedStudents(new Set(filteredStudents.map((s: any) => s.user_id)));
                   }}
                 >
-                  {selectedStudents.size === allStudents.length ? 'Désélectionner' : 'Tout sélectionner'}
+                  {selectedStudents.size === filteredStudents.length && filteredStudents.length > 0 ? 'Désélectionner' : 'Tout sélectionner'}
                 </Button>
               </div>
+
+              {/* Filters */}
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-1">
+                  <Label className="text-xs text-muted-foreground w-full">Catégorie</Label>
+                  {([
+                    { v: 'tous', l: 'Tous' },
+                    { v: 'petits', l: 'Petits' },
+                    { v: 'jeunes', l: 'Jeunes' },
+                    { v: 'adultes', l: 'Adultes' },
+                  ] as const).map(f => (
+                    <Button
+                      key={f.v}
+                      type="button"
+                      size="sm"
+                      variant={ageFilter === f.v ? 'default' : 'outline'}
+                      className="text-xs h-7 px-2"
+                      onClick={() => setAgeFilter(f.v)}
+                    >
+                      {f.l}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  <Label className="text-xs text-muted-foreground w-full">Genre</Label>
+                  {([
+                    { v: 'tous', l: 'Tous' },
+                    { v: 'fille', l: '👧 Filles' },
+                    { v: 'garcon', l: '👦 Garçons' },
+                  ] as const).map(f => (
+                    <Button
+                      key={f.v}
+                      type="button"
+                      size="sm"
+                      variant={genderFilter === f.v ? 'default' : 'outline'}
+                      className="text-xs h-7 px-2"
+                      onClick={() => setGenderFilter(f.v)}
+                    >
+                      {f.l}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} placeholder="Rechercher..." className="pl-9" />
@@ -324,7 +392,7 @@ const AdminStudentGroups = () => {
               <div className="max-h-48 overflow-y-auto border rounded-lg divide-y">
                 {filteredStudents.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-3">Aucun élève</p>
-                ) : filteredStudents.map(s => (
+                ) : filteredStudents.map((s: any) => (
                   <div
                     key={s.user_id}
                     onClick={() => {
@@ -335,10 +403,13 @@ const AdminStudentGroups = () => {
                     className="flex items-center gap-2 p-2 cursor-pointer hover:bg-muted/50 transition-colors"
                   >
                     <Checkbox checked={selectedStudents.has(s.user_id)} />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">{s.full_name || 'Élève'}</p>
                       <p className="text-xs text-muted-foreground truncate">{s.email}</p>
                     </div>
+                    {s.gender && (
+                      <span className="text-xs shrink-0">{s.gender === 'fille' ? '👧' : '👦'}</span>
+                    )}
                   </div>
                 ))}
               </div>
