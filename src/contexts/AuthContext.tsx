@@ -64,15 +64,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          setTimeout(async () => {
-            const [adminStatus, approvalStatus] = await Promise.all([
-              checkAdminRole(session.user.id),
-              checkApprovalStatus(session.user.id),
-            ]);
-            setIsAdmin(adminStatus);
-            setIsApproved(adminStatus ? true : approvalStatus);
-          }, 0);
-          // VAPID push: subscription handled by useWebPush hook
+          const [adminStatus, approvalStatus] = await Promise.all([
+            checkAdminRole(session.user.id),
+            checkApprovalStatus(session.user.id),
+          ]);
+          setIsAdmin(adminStatus);
+          setIsApproved(adminStatus ? true : approvalStatus);
         } else {
           setIsAdmin(false);
           setIsApproved(null);

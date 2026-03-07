@@ -26,11 +26,11 @@ const AdminGlobalStats = ({ onBack }: Props) => {
         { data: quizResponses },
         { data: quizzes },
       ] = await Promise.all([
-        (supabase as any).from('user_ramadan_progress').select('user_id, day_id, quiz_completed, video_watched, pdf_read'),
-        (supabase as any).from('profiles').select('user_id, full_name').eq('is_approved', true),
-        (supabase as any).from('connexion_logs').select('user_id, connected_at'),
+        (supabase as any).from('user_ramadan_progress').select('user_id, day_id, quiz_completed, video_watched, pdf_read').limit(1000),
+        (supabase as any).from('profiles').select('user_id, full_name').eq('is_approved', true).limit(500),
+        (supabase as any).from('connexion_logs').select('user_id, connected_at').limit(2000),
         (supabase as any).from('ramadan_days').select('id, day_number'),
-        (supabase as any).from('quiz_responses').select('quiz_id, is_correct, user_id').eq('is_correct', false),
+        (supabase as any).from('quiz_responses').select('quiz_id, is_correct, user_id').eq('is_correct', false).limit(2000),
         (supabase as any).from('ramadan_quizzes').select('id, question, day_id'),
       ]);
       return {
