@@ -922,7 +922,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
       </div>
 
       {/* Legend */}
-      <div className="flex gap-4 text-xs text-muted-foreground">
+      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5">
           <div className="w-3.5 h-3.5 rounded border-2 border-green-500 bg-green-500/15" />
           <span>Complet</span>
@@ -934,6 +934,15 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
         <div className="flex items-center gap-1.5">
           <div className="w-3.5 h-3.5 rounded border-2 border-border bg-muted/50" />
           <span>Vide</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span>🔒</span><span>Verrouillé</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span>🔓</span><span>Déverrouillé</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span>🔑</span><span>Exceptions</span>
         </div>
       </div>
 
