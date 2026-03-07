@@ -178,6 +178,20 @@ const AdminModuleProgress = ({ module, onBack }: AdminModuleProgressProps) => {
     );
   }
 
+  if (isError) {
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" onClick={onBack} className="mb-4">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Retour
+        </Button>
+        <div className="text-center py-8 text-destructive">
+          Erreur lors du chargement des données. Veuillez réessayer.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4 mb-6">
