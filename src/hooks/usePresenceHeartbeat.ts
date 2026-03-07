@@ -1,26 +1,41 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Sends a heartbeat every 60s to update last_seen in profiles.
- * Also handles visibility change and beforeunload to mark offline.
+ * Pauses when tab is hidden, resumes when visible.
  */
 const usePresenceHeartbeat = () => {
   const { user } = useAuth();
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const updatePresence = useCallback(async () => {
+    if (!user) return;
+    await (supabase as any)
+      .from('profiles')
+      .update({ last_seen: new Date().toISOString() })
+      .eq('user_id', user.id);
+  }, [user]);
+
+  const startHeartbeat = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    updatePresence();
+    intervalRef.current = setInterval(updatePresence, 60_000);
+  }, [updatePresence]);
+
+  const stopHeartbeat = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (!user) return;
 
-    const updatePresence = async () => {
-      await (supabase as any)
-        .from('profiles')
-        .update({ last_seen: new Date().toISOString() })
-        .eq('user_id', user.id);
-    };
-
     // Initial heartbeat
-    updatePresence();
+    startHeartbeat();
 
     // Log connexion (once per session)
     (supabase as any)
@@ -28,13 +43,12 @@ const usePresenceHeartbeat = () => {
       .insert({ user_id: user.id })
       .then(() => {});
 
-    // Heartbeat every 60 seconds
-    const interval = setInterval(updatePresence, 60_000);
-
-    // Handle tab visibility change
+    // Pause/resume on visibility change
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        updatePresence();
+      if (document.hidden) {
+        stopHeartbeat();
+      } else {
+        startHeartbeat();
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
@@ -49,12 +63,8 @@ const usePresenceHeartbeat = () => {
         'Prefer': 'return=minimal',
       };
 
-      // Try sendBeacon with fetch keepalive as fallback
       try {
         const body = JSON.stringify({ last_seen: new Date().toISOString() });
-        const blob = new Blob([body], { type: 'application/json' });
-
-        // sendBeacon doesn't support custom headers, use fetch keepalive
         fetch(url, {
           method: 'PATCH',
           headers,
@@ -68,11 +78,11 @@ const usePresenceHeartbeat = () => {
     window.addEventListener('beforeunload', handleUnload);
 
     return () => {
-      clearInterval(interval);
+      stopHeartbeat();
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('beforeunload', handleUnload);
     };
-  }, [user]);
+  }, [user, startHeartbeat, stopHeartbeat]);
 };
 
 export default usePresenceHeartbeat;

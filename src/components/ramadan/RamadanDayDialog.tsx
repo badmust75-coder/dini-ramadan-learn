@@ -238,7 +238,7 @@ const RamadanDayDialog = ({
             <div key={activity.id} className="space-y-1">
               <p className="text-xs text-muted-foreground">{activity.file_name}</p>
               <div className="aspect-video rounded-xl overflow-hidden bg-black">
-                <video src={activity.file_url} controls className="w-full h-full" />
+                <video src={activity.file_url} controls preload="none" className="w-full h-full" />
               </div>
             </div>
           );
@@ -797,7 +797,7 @@ const RamadanDayDialog = ({
                         <p className="text-xs text-muted-foreground text-left">Vidéo {idx + 1}</p>
                       )}
                       <div className="aspect-video rounded-xl overflow-hidden bg-black">
-                        <video src={v.video_url} controls className="w-full h-full" />
+                        <video src={v.video_url} controls preload="none" className="w-full h-full" />
                       </div>
                     </div>
                   ))}

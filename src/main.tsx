@@ -2,15 +2,12 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-// OneSignal is now initialized in index.html (before any JS loads)
-
-// Register Service Worker for PWA caching/auto-update (separate from OneSignal)
+// Register Service Worker for PWA caching (update logic handled by useAutoUpdate hook)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
         console.log('SW registered:', registration.scope);
-        setInterval(() => { registration.update(); }, 30000);
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           if (newWorker) {

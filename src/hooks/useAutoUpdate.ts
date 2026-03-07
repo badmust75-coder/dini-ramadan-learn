@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 
-const CHECK_INTERVAL = 5000; // Check every 5 seconds for near-instant updates
+const CHECK_INTERVAL = 300000; // Check every 5 minutes
 
 export const useAutoUpdate = () => {
   const checkForUpdates = useCallback(async () => {

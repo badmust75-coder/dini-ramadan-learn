@@ -273,7 +273,7 @@ const Index = () => {
                     {/* Icon or Image */}
                     <div className="relative z-10 mb-3">
                       {mod.image_url ? (
-                        <img src={mod.image_url} alt={mod.title} className="w-14 h-14 rounded-2xl object-cover shadow-lg" />
+                        <img src={mod.image_url} alt={mod.title} className="w-14 h-14 rounded-2xl object-cover shadow-lg" loading="lazy" width={56} height={56} />
                       ) : (
                         <div className={cn(
                           'w-14 h-14 rounded-2xl flex items-center justify-center',

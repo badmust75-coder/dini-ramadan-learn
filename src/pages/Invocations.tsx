@@ -118,11 +118,11 @@ const InvocationDetailDialog = ({ invocation, contents, progress, validationRequ
                 <div key={content.id} className="border border-border rounded-xl overflow-hidden">
                   {content.content_type === 'video' && (
                     <div className="aspect-video">
-                      <video src={content.file_url} controls className="w-full h-full" controlsList="nodownload" />
+                      <video src={content.file_url} controls preload="none" className="w-full h-full" controlsList="nodownload" />
                     </div>
                   )}
                   {content.content_type === 'image' && (
-                    <img src={content.file_url} alt={content.file_name} className="w-full h-auto object-contain" />
+                    <img src={content.file_url} alt={content.file_name} className="w-full h-auto object-contain" loading="lazy" />
                   )}
                   {(content.content_type === 'pdf' || content.content_type === 'document') && (
                     <a href={content.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors">
