@@ -51,7 +51,7 @@ const AdminStudentDetails = ({ onBack }: AdminStudentDetailsProps) => {
     queryFn: async () => {
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('user_id, email, full_name, created_at, date_of_birth');
+        .select('user_id, email, full_name, created_at, date_of_birth, gender');
       if (error) throw error;
       return profiles || [];
     },
@@ -238,6 +238,35 @@ const AdminStudentDetails = ({ onBack }: AdminStudentDetailsProps) => {
                     <CalendarIcon className="h-4 w-4 mr-2" /> 📅 Changer Date Naissance
                   </DropdownMenuItem>
                 </DropdownMenuContent>
+              </DropdownMenu>
+              <div className="flex gap-1 ml-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={(student as any).gender === 'garcon' ? 'default' : 'outline'}
+                  className="text-xs px-2 py-1 h-7"
+                  onClick={async () => {
+                    await supabase.from('profiles').update({ gender: 'garcon' } as any).eq('user_id', student.user_id);
+                    queryClient.invalidateQueries({ queryKey: ['admin-students-details'] });
+                    toast.success('Genre mis à jour : Garçon ✓');
+                  }}
+                >
+                  👦
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={(student as any).gender === 'fille' ? 'default' : 'outline'}
+                  className="text-xs px-2 py-1 h-7"
+                  onClick={async () => {
+                    await supabase.from('profiles').update({ gender: 'fille' } as any).eq('user_id', student.user_id);
+                    queryClient.invalidateQueries({ queryKey: ['admin-students-details'] });
+                    toast.success('Genre mis à jour : Fille ✓');
+                  }}
+                >
+                  👧
+                </Button>
+              </div>
               </DropdownMenu>
             </CardContent>
           </Card>
