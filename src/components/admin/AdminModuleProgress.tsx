@@ -25,8 +25,9 @@ const moduleConfig: Record<ModuleType, { title: string; titleArabic: string }> =
 };
 
 const AdminModuleProgress = ({ module, onBack }: AdminModuleProgressProps) => {
-  const { data: students, isLoading } = useQuery({
+  const { data: students, isLoading, isError } = useQuery({
     queryKey: ['admin-module-progress', module],
+    retry: 2,
     queryFn: async () => {
       // Get all profiles
       const { data: profiles, error: profilesError } = await supabase

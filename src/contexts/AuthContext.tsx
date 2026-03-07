@@ -98,7 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [checkAdminRole, checkApprovalStatus]);
 
   const signUp = async (email: string, password: string, fullName?: string, gender?: string, dateOfBirth?: string) => {
     try {
