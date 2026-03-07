@@ -117,6 +117,12 @@ const AdminGlobalStats = ({ onBack }: Props) => {
     pct: Math.round(((quizByDay.get(i + 1) || 0) / totalStudentsForProgress) * 100),
   }));
 
+  const daysWithData = progressChartData.filter(d => d.pct > 0);
+  const bestDay = daysWithData.length > 0 ? daysWithData.reduce((a, b) => a.pct > b.pct ? a : b) : null;
+  const worstDay = daysWithData.length > 0 ? daysWithData.reduce((a, b) => a.pct < b.pct ? a : b) : null;
+  const avgPct = daysWithData.length > 0 ? Math.round(daysWithData.reduce((s, d) => s + d.pct, 0) / daysWithData.length) : 0;
+  const progressLineColor = avgPct > 50 ? 'hsl(142, 71%, 45%)' : avgPct >= 25 ? 'hsl(38, 92%, 50%)' : 'hsl(0, 84%, 60%)';
+
   // SECTION 6 — Erreurs les plus fréquentes
   const errorsByQuiz = new Map<string, number>();
   quizResponses.forEach((r: any) => {
@@ -125,7 +131,7 @@ const AdminGlobalStats = ({ onBack }: Props) => {
   const quizMap = new Map(quizzes.map((q: any) => [q.id, q]));
   const topErrors = Array.from(errorsByQuiz.entries())
     .sort(([, a], [, b]) => b - a)
-    .slice(0, 5)
+    .slice(0, 10)
     .map(([qid, count]) => {
       const quiz = quizMap.get(qid) as any;
       const dayNumber = quiz ? (dayMap.get(quiz.day_id) as number | undefined) : null;
@@ -135,6 +141,7 @@ const AdminGlobalStats = ({ onBack }: Props) => {
         errors: count,
       };
     });
+  const maxErrors = topErrors.length > 0 ? topErrors[0].errors : 1;
 
   return (
     <div className="p-4 space-y-6">
@@ -222,15 +229,43 @@ const AdminGlobalStats = ({ onBack }: Props) => {
       {/* SECTION 5 */}
       <div>
         <h3 className="font-semibold mb-3">📉 Progression quiz jour par jour</h3>
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <Card className="text-center">
+            <CardContent className="py-2 px-1">
+              <p className="text-lg font-bold">{bestDay ? bestDay.jour : '—'}</p>
+              <p className="text-xs text-muted-foreground">📈 Meilleur {bestDay ? `(${bestDay.pct}%)` : ''}</p>
+            </CardContent>
+          </Card>
+          <Card className="text-center">
+            <CardContent className="py-2 px-1">
+              <p className="text-lg font-bold">{worstDay ? worstDay.jour : '—'}</p>
+              <p className="text-xs text-muted-foreground">📉 Difficile {worstDay ? `(${worstDay.pct}%)` : ''}</p>
+            </CardContent>
+          </Card>
+          <Card className="text-center">
+            <CardContent className="py-2 px-1">
+              <p className="text-lg font-bold">{avgPct}%</p>
+              <p className="text-xs text-muted-foreground">📊 Moyenne</p>
+            </CardContent>
+          </Card>
+        </div>
         <Card>
           <CardContent className="pt-4">
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer width="100%" height={250}>
               <LineChart data={progressChartData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="jour" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" height={50} />
-                <YAxis tick={{ fontSize: 11 }} unit="%" domain={[0, 100]} />
-                <Tooltip />
-                <Line type="monotone" dataKey="pct" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                <XAxis dataKey="jour" tick={{ fontSize: 9 }} angle={-45} textAnchor="end" height={50} interval={0} />
+                <YAxis tick={{ fontSize: 11 }} unit="%" domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} />
+                <Tooltip content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const d = payload[0].payload;
+                  return (
+                    <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-md">
+                      <p className="font-semibold">{d.jour} — {d.pct}% des élèves ont complété</p>
+                    </div>
+                  );
+                }} />
+                <Line type="monotone" dataKey="pct" stroke={progressLineColor} strokeWidth={2} dot={{ r: 4, fill: progressLineColor }} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -248,6 +283,9 @@ const AdminGlobalStats = ({ onBack }: Props) => {
                 <div className="flex justify-between mt-1 text-xs text-muted-foreground">
                   <span>Jour {e.dayNumber}</span>
                   <span className="text-red-500 font-semibold">{e.errors} erreur(s)</span>
+                </div>
+                <div className="mt-2 h-2 w-full rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full bg-red-500 transition-all" style={{ width: `${Math.round((e.errors / maxErrors) * 100)}%` }} />
                 </div>
               </CardContent>
             </Card>
