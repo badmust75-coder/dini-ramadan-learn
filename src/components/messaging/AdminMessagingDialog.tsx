@@ -359,7 +359,7 @@ const AdminMessagingDialog = ({ open, onOpenChange, onMessagesRead }: AdminMessa
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-lg h-[75vh] flex flex-col p-0">
+        <DialogContent className="sm:max-w-lg h-[75vh] flex flex-col p-0 [&>button]:hidden">
           <DialogHeader className="p-4 pb-2">
             <DialogTitle className="flex items-center gap-2">
               {selectedConversation ? (
