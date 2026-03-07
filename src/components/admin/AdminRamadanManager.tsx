@@ -736,8 +736,8 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 flex-1">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
@@ -771,7 +771,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
                 saveMaxErrorsMutation.mutate(val);
               }}
               disabled={saveMaxErrorsMutation.isPending}
-              className="bg-amber-500 hover:bg-amber-600 text-white"
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white"
             >
               {saveMaxErrorsMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -820,31 +820,41 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
       </Card>
 
       {/* Days Grid */}
-      <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-10 gap-2">
+      <h3 className="text-lg font-semibold text-foreground">📅 Les 30 jours</h3>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
         {days.map((day) => {
           const videoCount = getVideosForDay(day.id).length;
           const hasVideo = videoCount > 0 || !!day.video_url;
           const quizCount = getQuizzesForDay(day.id).length;
+          const hasPdf = !!day.pdf_url;
+          const isComplete = hasVideo && quizCount >= 1 && hasPdf;
+          const isPartial = hasVideo || quizCount > 0 || hasPdf;
 
           return (
             <button
               key={day.id}
               onClick={() => handleOpenDay(day.id)}
               className={`
-                aspect-square rounded-xl flex flex-col items-center justify-center text-sm font-bold transition-all duration-200
-                ${hasVideo && quizCount >= 1
+                rounded-xl p-3 flex flex-col items-start text-left transition-all duration-200 min-h-[80px]
+                ${isComplete
                   ? 'bg-gradient-to-br from-green-500 to-green-600 text-white'
-                  : hasVideo || quizCount > 0
-                  ? 'bg-gradient-to-br from-gold to-gold-dark text-primary'
+                  : isPartial
+                  ? 'bg-gradient-to-br from-amber-400 to-amber-500 text-white'
                   : 'bg-muted hover:bg-muted/80 text-foreground'
                 }
               `}
             >
-              <span>{day.day_number}</span>
-              <div className="flex gap-0.5 mt-1">
+              <span className="text-sm font-bold">Jour {day.day_number}</span>
+              {day.theme && (
+                <span className={`text-[10px] leading-tight mt-0.5 line-clamp-2 ${isComplete || isPartial ? 'text-white/80' : 'text-muted-foreground'}`}>
+                  {day.theme}
+                </span>
+              )}
+              <div className="flex gap-1 mt-auto pt-1">
                 {hasVideo && <Video className="h-3 w-3" />}
                 {videoCount > 1 && <span className="text-[9px]">x{videoCount}</span>}
                 {quizCount > 0 && <span className="text-[10px]">{quizCount}Q</span>}
+                {hasPdf && <FileText className="h-3 w-3" />}
               </div>
             </button>
           );
