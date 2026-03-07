@@ -85,7 +85,7 @@ const AdminStudentDetails = ({ onBack }: AdminStudentDetailsProps) => {
       ]);
       return {
         sourates: { validated: sourateProgress?.filter(p => p.is_validated).length || 0, total: totalSourates || 0 },
-        ramadan: { completed: ramadanProgress?.filter(p => p.video_watched && p.quiz_completed && p.pdf_read).length || 0, total: totalRamadanDays || 0 },
+        ramadan: { completed: ramadanProgress?.filter(p => p.quiz_completed).length || 0, total: totalRamadanDays || 0 },
         nourania: { validated: nouraniaProgress?.filter(p => p.is_validated).length || 0, total: totalNouraniaLessons || 0 },
         prayer: { validated: prayerProgress?.filter(p => p.is_validated).length || 0, total: totalPrayerCategories || 0 },
         alphabet: { validated: alphabetProgress?.filter(p => p.is_validated).length || 0, total: totalAlphabetLetters || 0 },
