@@ -1248,6 +1248,38 @@ export type Database = {
           },
         ]
       }
+      ramadan_day_exceptions: {
+        Row: {
+          created_at: string | null
+          day_id: number
+          id: string
+          is_unlocked: boolean | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          day_id: number
+          id?: string
+          is_unlocked?: boolean | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          day_id?: number
+          id?: string
+          is_unlocked?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ramadan_day_exceptions_day_id_fkey"
+            columns: ["day_id"]
+            isOneToOne: false
+            referencedRelation: "ramadan_days"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ramadan_day_videos: {
         Row: {
           created_at: string
@@ -1288,6 +1320,7 @@ export type Database = {
           created_at: string
           day_number: number
           id: number
+          is_unlocked: boolean | null
           pdf_url: string | null
           theme: string | null
           updated_at: string
@@ -1297,6 +1330,7 @@ export type Database = {
           created_at?: string
           day_number: number
           id?: number
+          is_unlocked?: boolean | null
           pdf_url?: string | null
           theme?: string | null
           updated_at?: string
@@ -1306,6 +1340,7 @@ export type Database = {
           created_at?: string
           day_number?: number
           id?: number
+          is_unlocked?: boolean | null
           pdf_url?: string | null
           theme?: string | null
           updated_at?: string
