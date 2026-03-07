@@ -260,13 +260,37 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
     },
   });
 
+  // Fetch profiles for student picker
+  const { data: profiles = [] } = useQuery({
+    queryKey: ['admin-profiles-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('profiles').select('user_id, full_name, email').eq('is_approved', true).order('full_name');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch day exceptions
+  const { data: dayExceptions = [] } = useQuery({
+    queryKey: ['admin-ramadan-day-exceptions'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from('ramadan_day_exceptions').select('*');
+      if (error) throw error;
+      return data as { id: string; user_id: string; day_id: number; is_unlocked: boolean; created_at: string }[];
+    },
+  });
+
+  const [selectedStudentForException, setSelectedStudentForException] = useState<string>('');
+
   const getQuizzesForDay = (dayId: number) => quizzes.filter(q => q.day_id === dayId).sort((a, b) => a.question_order - b.question_order);
   const getVideosForDay = (dayId: number) => dayVideos.filter(v => v.day_id === dayId);
   const getActivitiesForDay = (dayId: number) => dayActivities.filter(a => a.day_id === dayId);
+  const getExceptionsForDay = (dayId: number) => dayExceptions.filter(e => e.day_id === dayId && e.is_unlocked);
   const currentDayData = days.find(d => d.id === selectedDay);
   const currentQuizzes = selectedDay ? getQuizzesForDay(selectedDay) : [];
   const currentVideos = selectedDay ? getVideosForDay(selectedDay) : [];
   const currentActivities = selectedDay ? getActivitiesForDay(selectedDay) : [];
+  const currentExceptions = selectedDay ? getExceptionsForDay(selectedDay) : [];
 
   // Upload video mutation (multi-video)
   const uploadVideoMutation = useMutation({
