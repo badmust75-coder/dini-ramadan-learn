@@ -7,14 +7,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, Star, Crown, Settings, Save } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+type GroupFilter = 'global' | 'Petits' | 'Jeunes' | 'Adultes';
+
+const GROUP_FILTERS: { key: GroupFilter; label: string; icon: string }[] = [
+  { key: 'global', label: 'Global', icon: '🌍' },
+  { key: 'Petits', label: 'Petits', icon: '🧒' },
+  { key: 'Jeunes', label: 'Jeunes', icon: '🧑' },
+  { key: 'Adultes', label: 'Adultes', icon: '👤' },
+];
 
 interface RankingEntry {
   user_id: string;
   total_points: number;
   full_name: string | null;
+  prayer_group: string | null;
   rank: number;
 }
 
@@ -62,6 +72,7 @@ const Classement = () => {
   const queryClient = useQueryClient();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editedPoints, setEditedPoints] = useState<Record<string, number>>({});
+  const [groupFilter, setGroupFilter] = useState<GroupFilter>('global');
 
   const { data: pointSettings = [] } = useQuery({
     queryKey: ['point-settings'],
@@ -75,7 +86,7 @@ const Classement = () => {
     },
   });
 
-  const { data: rankings, isLoading, refetch } = useQuery({
+  const { data: allRankings, isLoading, refetch } = useQuery({
     queryKey: ['student-rankings'],
     queryFn: async () => {
       const { data: rankingData, error } = await supabase
@@ -90,7 +101,7 @@ const Classement = () => {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, full_name')
+        .select('user_id, full_name, prayer_group')
         .in('user_id', userIds);
 
       const entries: RankingEntry[] = [];
@@ -98,6 +109,7 @@ const Classement = () => {
 
       for (let i = 0; i < (rankingData || []).length; i++) {
         const item = rankingData![i];
+        const profile = profiles?.find(p => p.user_id === item.user_id);
         if (i > 0 && item.total_points === rankingData![i - 1].total_points) {
           // same rank as previous (tie)
         } else {
@@ -106,7 +118,8 @@ const Classement = () => {
         entries.push({
           user_id: item.user_id,
           total_points: item.total_points,
-          full_name: profiles?.find(p => p.user_id === item.user_id)?.full_name || null,
+          full_name: profile?.full_name || null,
+          prayer_group: profile?.prayer_group || null,
           rank: currentRank,
         });
       }
@@ -114,6 +127,28 @@ const Classement = () => {
       return entries;
     },
   });
+
+  // Filter and re-rank based on group filter
+  const rankings = useMemo(() => {
+    if (!allRankings) return undefined;
+    let filtered = allRankings;
+    if (groupFilter !== 'global') {
+      filtered = allRankings.filter(e => e.prayer_group === groupFilter);
+    }
+    // Re-assign ranks within filtered list
+    let currentRank = 1;
+    return filtered.map((entry, i) => {
+      if (i > 0 && entry.total_points === filtered[i - 1].total_points) {
+        // tie
+      } else {
+        currentRank = i + 1;
+      }
+      return { ...entry, rank: currentRank };
+    });
+  }, [allRankings, groupFilter]);
+
+  const myProfile = allRankings?.find(r => r.user_id === user?.id);
+  const myInFilter = rankings?.find(r => r.user_id === user?.id);
 
   const updatePointsMutation = useMutation({
     mutationFn: async (updates: Record<string, number>) => {
@@ -124,7 +159,6 @@ const Classement = () => {
           .eq('module_key', moduleKey);
         if (error) throw error;
       }
-      // Recalculate all students' points
       const { data: allStudents } = await supabase
         .from('student_ranking')
         .select('user_id');
@@ -164,7 +198,7 @@ const Classement = () => {
     updatePointsMutation.mutate(editedPoints);
   };
 
-  const myRanking = rankings?.find(r => r.user_id === user?.id);
+  const myRanking = myInFilter;
   const encouragement = myRanking ? getEncouragementMessage(myRanking.rank, rankings?.length || 0) : null;
 
   return (
@@ -178,6 +212,24 @@ const Classement = () => {
             <Crown className="h-7 w-7 text-secondary" />
           </div>
           <p className="text-sm text-muted-foreground">Qui sera au sommet cette semaine ?</p>
+        </div>
+
+        {/* Group filter */}
+        <div className="flex gap-2 justify-center">
+          {GROUP_FILTERS.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setGroupFilter(f.key)}
+              className={cn(
+                'px-3 py-1.5 rounded-full text-xs font-semibold transition-all',
+                groupFilter === f.key
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              )}
+            >
+              {f.icon} {f.label}
+            </button>
+          ))}
         </div>
 
         {/* My position highlight */}
@@ -216,7 +268,11 @@ const Classement = () => {
           <div className="text-center py-12 text-muted-foreground">
             <Star className="h-12 w-12 mx-auto mb-3 text-secondary/50" />
             <p>Aucun classement pour le moment</p>
-            <p className="text-xs mt-1">Les points seront attribués à chaque validation !</p>
+            <p className="text-xs mt-1">
+              {groupFilter !== 'global'
+                ? `Aucun élève dans la catégorie "${groupFilter}"`
+                : 'Les points seront attribués à chaque validation !'}
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -251,6 +307,13 @@ const Classement = () => {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* User not in current filter */}
+        {groupFilter !== 'global' && !myInFilter && myProfile && (
+          <div className="text-center py-3 px-4 rounded-xl bg-muted/50 border border-border">
+            <p className="text-sm text-muted-foreground">Vous n'êtes pas dans cette catégorie</p>
           </div>
         )}
 
