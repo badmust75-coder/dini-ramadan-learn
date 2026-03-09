@@ -1160,7 +1160,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
             </div>
 
             {/* Quiz Section: Unlimited with DnD */}
-            <div className="space-y-4 border-t pt-4">
+            <div className="space-y-4 border-t pt-4" ref={quizSectionRef}>
               <div className="flex items-center justify-between">
                 <Label className="flex items-center gap-2 text-base font-semibold">
                   <HelpCircle className="h-4 w-4 text-gold" />
