@@ -52,11 +52,21 @@ const getRankDisplay = (rank: number) => {
 };
 
 const getRowStyle = (rank: number, isMe: boolean) => {
-  if (isMe) return 'bg-gradient-to-r from-yellow-200 to-yellow-300 dark:from-yellow-700/50 dark:to-yellow-600/40 border-yellow-400 shadow-md ring-2 ring-yellow-400/60';
-  if (rank === 1) return 'bg-gradient-to-r from-sky-100 to-sky-200 dark:from-sky-900/40 dark:to-sky-800/30 border-sky-300';
-  if (rank === 2) return 'bg-gradient-to-r from-green-100 to-green-200 dark:from-green-900/40 dark:to-green-800/30 border-green-300';
-  if (rank === 3) return 'bg-gradient-to-r from-orange-100 to-orange-200 dark:from-orange-900/40 dark:to-orange-800/30 border-orange-300';
-  return 'bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-700';
+  if (isMe) return 'border-yellow-400 shadow-md ring-2 ring-yellow-400/60';
+  if (rank === 1) return 'border-blue-300';
+  if (rank === 2) return 'border-green-300';
+  if (rank === 3) return 'border-yellow-300';
+  if (rank === 4) return 'border-orange-300';
+  return 'border-red-200';
+};
+
+const getRankBgColor = (rank: number, isMe: boolean) => {
+  if (isMe) return '#fef08a'; // yellow-200
+  if (rank === 1) return '#dbeafe'; // blue-100
+  if (rank === 2) return '#dcfce7'; // green-100
+  if (rank === 3) return '#fef9c3'; // yellow-100
+  if (rank === 4) return '#ffedd5'; // orange-100
+  return '#fee2e2'; // red-100
 };
 
 const getEncouragementMessage = (rank: number, total: number) => {
