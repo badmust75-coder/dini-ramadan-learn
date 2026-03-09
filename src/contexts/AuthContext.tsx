@@ -57,6 +57,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err) { console.error('Error in checkApprovalStatus:', err); return false; }
   }, []);
 
+  // Re-check approval when app comes back to foreground
+  const recheckApproval = useCallback(async () => {
+    const currentUser = (await supabase.auth.getUser()).data.user;
+    if (!currentUser) return;
+    const approved = await checkApprovalStatus(currentUser.id);
+    const admin = await checkAdminRole(currentUser.id);
+    setIsApproved(admin ? true : approved);
+    setIsAdmin(admin);
+  }, [checkApprovalStatus, checkAdminRole]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -130,12 +140,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
+    // Re-check approval on visibility change (tab focus)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        recheckApproval();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       mounted = false;
       clearTimeout(safetyTimer);
       subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [checkAdminRole, checkApprovalStatus]);
+  }, [checkAdminRole, checkApprovalStatus, recheckApproval]);
 
   const signUp = async (email: string, password: string, fullName?: string, gender?: string, dateOfBirth?: string) => {
     try {
