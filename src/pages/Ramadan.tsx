@@ -376,25 +376,21 @@ const Ramadan = () => {
             const isFutureLockedDay = isFutureDay(day);
 
             const getDayClasses = () => {
-              // Completed: green background with checkmark
+              // Completed: dark green background
               if (isCompleted) {
-                return 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-md hover:scale-105 cursor-pointer';
+                return 'bg-gradient-to-br from-green-600 to-green-700 text-white shadow-md hover:scale-105 cursor-pointer';
               }
               // Current day (J): ORANGE background
               if (isCurrentDay) {
-                if (isCurrentDayBeforeUnlock) {
-                  return 'bg-gradient-to-br from-orange-400 to-orange-500 text-white cursor-wait';
-                }
-                // Current day unlocked (after 16h)
                 return 'bg-gradient-to-br from-orange-400 to-orange-500 text-white shadow-md hover:scale-105 cursor-pointer';
               }
-              // Accessible window (J-1, J-2, J-3): light green/white
+              // Accessible window (J-1, J-2, J-3): very light green
               if (isAccessibleWindow) {
                 return 'bg-[hsl(140,40%,92%)] text-[hsl(140,30%,30%)] hover:scale-105 cursor-pointer';
               }
-              // Old locked or future locked: gray with lock
+              // Old locked or future locked: beige/cream
               if (isOldLockedDay || isFutureLockedDay) {
-                return 'bg-muted text-muted-foreground opacity-40 cursor-not-allowed';
+                return 'bg-[hsl(40,30%,92%)] text-[hsl(30,20%,50%)] cursor-not-allowed';
               }
               // Default fallback
               return 'bg-muted text-muted-foreground cursor-not-allowed';
@@ -409,30 +405,20 @@ const Ramadan = () => {
                   getDayClasses()
                 )}
               >
-                {/* Completed day: checkmark + day number */}
+                {/* Small lock on old locked days (top-right) */}
+                {isOldLockedDay && !isCompleted && (
+                  <span className="absolute top-0.5 right-0.5 text-[8px]">🔒</span>
+                )}
+
                 {isCompleted ? (
                   <>
-                    <Check className="h-4 w-4" />
-                    <span className="text-[10px]">{day.day_number}</span>
-                  </>
-                ) : isCurrentDay ? (
-                  <>
-                    {/* Current day: show number prominently */}
-                    <span className="text-lg font-bold">{day.day_number}</span>
-                    {isCurrentDayBeforeUnlock && (
-                      <Clock className="h-3 w-3 mt-0.5 opacity-80" />
-                    )}
-                  </>
-                ) : isOldLockedDay || isFutureLockedDay ? (
-                  <>
-                    {/* Locked days: lock emoji + number in gray */}
-                    <span className="text-sm">🔒</span>
-                    <span className="text-[10px] text-gray-500">{day.day_number}</span>
+                    <Check className="h-5 w-5" />
+                    <span className="text-[10px] mt-0.5">{day.day_number}</span>
                   </>
                 ) : (
                   <>
-                    {/* Accessible window days: just the number */}
-                    <span className="text-lg font-bold">{day.day_number}</span>
+                    <span className="text-sm">🌙</span>
+                    <span className="text-[11px] font-bold">{day.day_number}</span>
                   </>
                 )}
               </button>
@@ -443,23 +429,21 @@ const Ramadan = () => {
         {/* Legend */}
         <div className="flex flex-wrap gap-3 justify-center text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
-            <div className="w-4 h-4 rounded bg-gradient-to-br from-green-500 to-green-600" />
+            <div className="w-4 h-4 rounded bg-gradient-to-br from-green-600 to-green-700" />
             <span>Complété</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-4 h-4 rounded bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center">
-              <Clock className="h-2 w-2 text-white" />
-            </div>
+            <div className="w-4 h-4 rounded bg-gradient-to-br from-orange-400 to-orange-500" />
             <span>En attente</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-4 h-4 rounded bg-muted flex items-center justify-center">
-              <Lock className="h-2 w-2" />
+            <div className="w-4 h-4 rounded bg-[hsl(40,30%,92%)] flex items-center justify-center">
+              <Lock className="h-2 w-2 text-[hsl(30,20%,50%)]" />
             </div>
             <span>Verrouillé</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-4 h-4 rounded bg-muted" />
+            <div className="w-4 h-4 rounded bg-[hsl(140,40%,92%)]" />
             <span>Disponible</span>
           </div>
         </div>
