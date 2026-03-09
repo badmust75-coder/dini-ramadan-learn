@@ -41,25 +41,32 @@ const AdminRegistrationValidations = ({ onBack }: { onBack: () => void }) => {
   const handleApprove = async (userId: string) => {
     setProcessingId(userId);
     try {
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from('profiles')
         .update({ is_approved: true })
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .select('user_id, is_approved');
 
       if (error) throw error;
+
+      if (!updated || updated.length === 0) {
+        throw new Error('La mise à jour n\'a pas été appliquée. Vérifiez les permissions.');
+      }
 
       toast({
         title: 'Inscription approuvée ✅',
         description: "L'élève peut maintenant accéder à l'application.",
       });
 
-      queryClient.invalidateQueries({ queryKey: ['admin-all-registrations'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-pending-registrations-count'] });
-    } catch (err) {
-      console.error(err);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin-all-registrations'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-pending-registrations-count'] }),
+      ]);
+    } catch (err: any) {
+      console.error('Erreur approbation:', err);
       toast({
         title: 'Erreur',
-        description: "Impossible d'approuver l'inscription.",
+        description: err?.message || "Impossible d'approuver l'inscription.",
         variant: 'destructive',
       });
     }
