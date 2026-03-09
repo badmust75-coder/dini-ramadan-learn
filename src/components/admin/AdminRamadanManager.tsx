@@ -1155,7 +1155,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
               />
               <Button
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
+                disabled={uploading || uploadVideoMutation.isPending}
                 variant="outline"
                 className="w-full"
               >
