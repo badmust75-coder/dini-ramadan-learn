@@ -380,21 +380,17 @@ const Ramadan = () => {
             const prevDayCompleted = !prevDay || !!getDayProgress(prevDay.id)?.quiz_completed;
             const isAccessibleBlocked = isAccessibleWindow && !prevDayCompleted;
 
-            // Priority-based styling
+            // Priority-based styling using DATE position (not sequential unlock logic)
+            const isInWindow = day.day_number >= (currentRamadanDay - 3) && day.day_number < currentRamadanDay;
+
             const getDayStyle = (): { bg: string; showLock: boolean; showMoon: boolean } => {
               // 1. Completed
               if (isCompleted) return { bg: 'bg-[#22c55e] text-white shadow-md hover:scale-105 cursor-pointer', showLock: false, showMoon: false };
               // 2. Current day, not completed
               if (isCurrentDay) return { bg: 'bg-[#f97316] text-white shadow-md hover:scale-105 cursor-pointer', showLock: false, showMoon: true };
-              // 3. Accessible window, previous completed
-              if (isAccessibleWindow && prevDayCompleted) return { bg: 'bg-[#dcfce7] text-green-800 hover:scale-105 cursor-pointer', showLock: false, showMoon: true };
-              // 4. Accessible window, previous NOT completed
-              if (isAccessibleWindow && !prevDayCompleted) return { bg: 'bg-[#dcfce7] text-green-800', showLock: true, showMoon: true };
-              // 5. Old locked
-              if (isOldLockedDay) return { bg: 'bg-[#fef3c7] text-amber-700', showLock: true, showMoon: true };
-              // 6. Future
-              if (isFutureLockedDay) return { bg: 'bg-[#fef3c7] text-amber-700', showLock: true, showMoon: true };
-              // Default fallback
+              // 3. In accessible window (J-1, J-2, J-3) — date-based
+              if (isInWindow) return { bg: 'bg-[#dcfce7] text-green-800 hover:scale-105 cursor-pointer', showLock: !prevDayCompleted, showMoon: true };
+              // 4. Old locked or future — beige
               return { bg: 'bg-[#fef3c7] text-amber-700', showLock: true, showMoon: true };
             };
 
