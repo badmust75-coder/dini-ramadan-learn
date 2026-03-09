@@ -3,6 +3,7 @@ import Header from './Header';
 import BottomNav from './BottomNav';
 import usePresenceHeartbeat from '@/hooks/usePresenceHeartbeat';
 import EmailVerificationBanner from '@/components/auth/EmailVerificationBanner';
+import StarMascot from '@/components/mascot/StarMascot';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -27,6 +28,7 @@ const AppLayout = ({
         {children}
       </main>
       {showBottomNav && <BottomNav />}
+      <StarMascot />
     </div>
   );
 };
