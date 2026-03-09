@@ -175,8 +175,11 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoSectionRef = useRef<HTMLDivElement>(null);
+  const quizSectionRef = useRef<HTMLDivElement>(null);
 
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [scrollToSection, setScrollToSection] = useState<'video' | 'quiz' | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadingActivity, setUploadingActivity] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'quiz' | 'allQuizzes' | 'video' | 'activity'; id?: string; dayId?: number } | null>(null);
