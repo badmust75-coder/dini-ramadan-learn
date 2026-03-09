@@ -58,25 +58,30 @@ const DraggableGroupCard = ({
   onDelete,
   onDragStart,
   onDragOver,
+  onDragEnd,
   onDrop,
   isDragging,
+  isDragOver,
 }: {
   group: StudentGroup;
   onEdit: (group: StudentGroup) => void;
   onDelete: (groupId: string) => void;
-  onDragStart: (id: string) => void;
+  onDragStart: (e: React.DragEvent, id: string) => void;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: (id: string) => void;
+  onDragEnd: () => void;
+  onDrop: (e: React.DragEvent, id: string) => void;
   isDragging: boolean;
+  isDragOver: boolean;
 }) => {
   return (
     <Card
       draggable
-      onDragStart={() => onDragStart(group.id)}
+      onDragStart={(e) => onDragStart(e, group.id)}
       onDragOver={onDragOver}
-      onDrop={() => onDrop(group.id)}
-      className="transition-shadow"
-      style={{ opacity: isDragging ? 0.5 : 1 }}
+      onDragEnd={onDragEnd}
+      onDrop={(e) => onDrop(e, group.id)}
+      className={`transition-all cursor-grab active:cursor-grabbing ${isDragOver ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+      style={{ opacity: isDragging ? 0.4 : 1 }}
     >
       <CardContent className="p-3">
         <div className="flex items-start justify-between gap-1">
