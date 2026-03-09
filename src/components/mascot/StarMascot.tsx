@@ -29,6 +29,14 @@ const StarMascot = () => {
   const navigate = useNavigate();
   const { data: progress } = useUserProgress();
   
+  const starRef = useRef<HTMLButtonElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [position, setPosition] = useState(() => {
+    // Load saved position from localStorage
+    const saved = localStorage.getItem('starMascot-position');
+    return saved ? JSON.parse(saved) : { x: window.innerWidth - 80, y: window.innerHeight - 120 };
+  });
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
