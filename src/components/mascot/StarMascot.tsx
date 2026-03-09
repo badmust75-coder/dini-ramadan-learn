@@ -284,6 +284,81 @@ Clique sur n'importe quel module pour commencer !
     return getEncouragementMessage();
   };
 
+  // Drag handlers
+  const handleDragStart = (clientX: number, clientY: number) => {
+    if (!starRef.current) return;
+    
+    setIsDragging(true);
+    const rect = starRef.current.getBoundingClientRect();
+    setDragOffset({
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    });
+  };
+
+  const handleDragMove = (clientX: number, clientY: number) => {
+    if (!isDragging) return;
+    
+    const newX = Math.max(0, Math.min(clientX - dragOffset.x, window.innerWidth - 64));
+    const newY = Math.max(0, Math.min(clientY - dragOffset.y, window.innerHeight - 64));
+    
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  // Mouse events
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    handleDragStart(e.clientX, e.clientY);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    handleDragMove(e.clientX, e.clientY);
+  };
+
+  const handleMouseUp = () => {
+    handleDragEnd();
+  };
+
+  // Touch events
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    handleDragStart(touch.clientX, touch.clientY);
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    handleDragMove(touch.clientX, touch.clientY);
+  };
+
+  const handleTouchEnd = (e: TouchEvent) => {
+    e.preventDefault();
+    handleDragEnd();
+  };
+
+  // Add global event listeners for drag
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleTouchEnd, { passive: false });
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+      };
+    }
+  }, [isDragging, dragOffset]);
+  };
+
   if (!user) return null;
 
   return (
