@@ -57,6 +57,9 @@ const Header = ({
                 </Badge>
               )}
             </Button>
+            <Button variant="ghost" size="icon" onClick={() => navigate('/classement')} className="text-primary-foreground hover:bg-primary-foreground/10">
+              <Trophy className="h-5 w-5" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={() => navigate('/attendance')} className="text-primary-foreground hover:bg-primary-foreground/10">
               <CalendarCheck className="h-5 w-5" />
             </Button>
