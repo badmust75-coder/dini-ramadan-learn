@@ -349,9 +349,11 @@ const AdminStudentGroups = () => {
               onEdit={openEdit}
               onDelete={handleDeleteGroup}
               onDragStart={handleDragStart}
-              onDragOver={(e) => e.preventDefault()}
+              onDragOver={(e) => handleDragOver(e, group.id)}
+              onDragEnd={handleDragEnd}
               onDrop={handleDrop}
               isDragging={draggedId === group.id}
+              isDragOver={dragOverId === group.id && draggedId !== group.id}
             />
           ))}
         </div>
