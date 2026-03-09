@@ -411,7 +411,7 @@ const Classement = () => {
         )}
 
         {/* User not in current filter */}
-        {groupFilter !== 'global' && !myInFilter && myProfile && (
+        {effectiveFilter !== 'global' && !myInFilter && myProfile && (
           <div className="text-center py-3 px-4 rounded-xl bg-muted/50 border border-border">
             <p className="text-sm text-muted-foreground">Vous n'êtes pas dans ce groupe</p>
           </div>
