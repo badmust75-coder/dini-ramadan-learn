@@ -148,7 +148,7 @@ const AdminStudentGroups = () => {
       const { data: groupsData, error } = await (supabase as any)
         .from('student_groups')
         .select('*')
-        .order('display_order');
+        .order('position', { ascending: true });
       if (error) throw error;
 
       const { data: members } = await (supabase as any)
