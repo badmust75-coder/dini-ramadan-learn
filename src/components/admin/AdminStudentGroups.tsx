@@ -278,14 +278,15 @@ const AdminStudentGroups = () => {
     const reordered = arrayMove(groups, oldIndex, newIndex);
 
     // Optimistic update
-    queryClient.setQueryData(['student-groups'], reordered.map((g, i) => ({ ...g, display_order: i })));
+    const updated = reordered.map((g, i) => ({ ...g, display_order: i }));
+    queryClient.setQueryData(['student-groups'], updated);
 
     // Persist to DB
     await Promise.all(
-      reordered.map((g, index) =>
+      updated.map((g) =>
         (supabase as any)
           .from('student_groups')
-          .update({ display_order: index })
+          .update({ display_order: g.display_order })
           .eq('id', g.id)
       )
     );
