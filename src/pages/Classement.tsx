@@ -330,7 +330,7 @@ const Classement = () => {
               </button>
             ))}
           </div>
-        )
+        )}
 
         {/* My position highlight */}
         {myRanking && encouragement && (
