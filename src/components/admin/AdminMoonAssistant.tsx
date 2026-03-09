@@ -195,6 +195,8 @@ const AdminMoonAssistant = () => {
     }
   };
 
+  if (!isAdmin) return null;
+
   return (
     <>
       {/* Floating Moon Button */}
