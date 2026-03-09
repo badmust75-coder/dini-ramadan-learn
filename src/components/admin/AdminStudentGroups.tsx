@@ -15,6 +15,22 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Plus, MoreVertical, Pencil, Trash2, Users, Search, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  DndContext,
+  closestCenter,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  KeyboardSensor,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  rectSortingStrategy,
+  arrayMove,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const GROUP_COLORS = [
   { value: 'bg-blue-500', label: 'Bleu', preview: 'bg-blue-500' },
@@ -51,6 +67,90 @@ const getAgeGroup = (dateOfBirth: string | null): string => {
   return 'adultes';
 };
 
+// Sortable group card component
+const SortableGroupCard = ({
+  group,
+  onEdit,
+  onDelete,
+}: {
+  group: StudentGroup;
+  onEdit: (group: StudentGroup) => void;
+  onDelete: (groupId: string) => void;
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: group.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <Card ref={setNodeRef} style={style} className="transition-shadow">
+      <CardContent className="p-3">
+        <div className="flex items-start justify-between gap-1">
+          <div className="flex items-start gap-2 min-w-0 flex-1">
+            <button
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing touch-none mt-0.5"
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+            </button>
+            <div className={`w-2.5 h-2.5 rounded-full shrink-0 mt-1 ${group.color}`} />
+            <span className="text-sm font-bold leading-tight break-words">{group.name}</span>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onEdit(group)}>
+                <Pencil className="h-4 w-4 mr-2" /> Modifier
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => onDelete(group.id)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" /> Supprimer
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <div className="mt-2">
+          <Badge variant="secondary" className="text-xs">
+            {group.memberCount} élève{group.memberCount > 1 ? 's' : ''}
+          </Badge>
+        </div>
+        {group.members.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {group.members.slice(0, 3).map(m => (
+              <span key={m.user_id} className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                {m.full_name || m.email?.split('@')[0] || '?'}
+              </span>
+            ))}
+            {group.members.length > 3 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                +{group.members.length - 3}
+              </span>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 const AdminStudentGroups = () => {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -59,9 +159,13 @@ const AdminStudentGroups = () => {
   const [groupColor, setGroupColor] = useState('bg-blue-500');
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [studentSearch, setStudentSearch] = useState('');
-  const [draggedId, setDraggedId] = useState<string | null>(null);
   const [ageFilter, setAgeFilter] = useState<AgeFilter>('tous');
   const [genderFilter, setGenderFilter] = useState<GenderFilter>('tous');
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  );
 
   // Fetch groups with members
   const { data: groups = [] } = useQuery({
@@ -97,7 +201,7 @@ const AdminStudentGroups = () => {
     },
   });
 
-  // Fetch all students for selection (including gender and date_of_birth)
+  // Fetch all students for selection
   const { data: allStudents = [] } = useQuery({
     queryKey: ['all-students-for-groups'],
     queryFn: async () => {
@@ -133,7 +237,7 @@ const AdminStudentGroups = () => {
         const { data: newGroup, error } = await (supabase as any)
           .from('student_groups')
           .insert({ name: groupName, color: groupColor, display_order: maxOrder })
-          .select('id')
+          .select()
           .single();
         if (error) throw error;
 
@@ -144,34 +248,49 @@ const AdminStudentGroups = () => {
         }
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['student-groups'] });
-      toast.success(editingGroup ? 'Groupe modifié' : 'Groupe créé');
+    onSuccess: async () => {
       closeDialog();
+      toast.success(editingGroup ? 'Groupe modifié' : 'Groupe créé');
+      await queryClient.invalidateQueries({ queryKey: ['student-groups'] });
     },
     onError: () => toast.error('Erreur'),
   });
 
   const handleDeleteGroup = async (groupId: string) => {
+    queryClient.setQueryData(['student-groups'], (old: StudentGroup[] | undefined) =>
+      (old || []).filter(g => g.id !== groupId)
+    );
     const { error } = await (supabase as any).from('student_groups').delete().eq('id', groupId);
     if (!error) {
-      queryClient.setQueryData(['student-groups'], (old: StudentGroup[] | undefined) =>
-        (old || []).filter(g => g.id !== groupId)
-      );
       toast.success('Groupe supprimé');
     } else {
+      queryClient.invalidateQueries({ queryKey: ['student-groups'] });
       toast.error('Erreur');
     }
   };
 
-  const reorderMutation = useMutation({
-    mutationFn: async (reordered: { id: string; display_order: number }[]) => {
-      for (const item of reordered) {
-        await (supabase as any).from('student_groups').update({ display_order: item.display_order }).eq('id', item.id);
-      }
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['student-groups'] }),
-  });
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = groups.findIndex(g => g.id === active.id);
+    const newIndex = groups.findIndex(g => g.id === over.id);
+    const reordered = arrayMove(groups, oldIndex, newIndex);
+
+    // Optimistic update
+    const updated = reordered.map((g: StudentGroup, i: number) => ({ ...g, display_order: i }));
+    queryClient.setQueryData(['student-groups'], updated);
+
+    // Persist to DB
+    await Promise.all(
+      updated.map((g) =>
+        (supabase as any)
+          .from('student_groups')
+          .update({ display_order: g.display_order })
+          .eq('id', g.id)
+      )
+    );
+  };
 
   const closeDialog = () => {
     setDialogOpen(false);
@@ -190,20 +309,6 @@ const AdminStudentGroups = () => {
     setGroupColor(group.color);
     setSelectedStudents(new Set(group.members.map(m => m.user_id)));
     setDialogOpen(true);
-  };
-
-  const handleDragStart = (id: string) => setDraggedId(id);
-
-  const handleDrop = (targetId: string) => {
-    if (!draggedId || draggedId === targetId) { setDraggedId(null); return; }
-    const reordered = [...groups];
-    const fromIdx = reordered.findIndex(g => g.id === draggedId);
-    const toIdx = reordered.findIndex(g => g.id === targetId);
-    const [moved] = reordered.splice(fromIdx, 1);
-    reordered.splice(toIdx, 0, moved);
-    const updates = reordered.map((g, i) => ({ id: g.id, display_order: i }));
-    reorderMutation.mutate(updates);
-    setDraggedId(null);
   };
 
   const filteredStudents = allStudents.filter((s: any) => {
@@ -234,67 +339,27 @@ const AdminStudentGroups = () => {
       {groups.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-4">Aucun groupe créé</p>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
-          {groups.map((group) => (
-            <Card
-              key={group.id}
-              draggable
-              onDragStart={() => handleDragStart(group.id)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => handleDrop(group.id)}
-              className={`cursor-grab active:cursor-grabbing transition-all ${
-                draggedId === group.id ? 'opacity-50 scale-95' : ''
-              }`}
-            >
-              <CardContent className="p-3">
-                <div className="flex items-start justify-between gap-1">
-                  <div className="flex items-start gap-2 min-w-0 flex-1">
-                    <GripVertical className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 mt-1 ${group.color}`} />
-                    <span className="text-sm font-bold leading-tight break-words">{group.name}</span>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => openEdit(group)}>
-                        <Pencil className="h-4 w-4 mr-2" /> Modifier
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => handleDeleteGroup(group.id)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" /> Supprimer
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <div className="mt-2">
-                  <Badge variant="secondary" className="text-xs">
-                    {group.memberCount} élève{group.memberCount > 1 ? 's' : ''}
-                  </Badge>
-                </div>
-                {group.members.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {group.members.slice(0, 3).map(m => (
-                      <span key={m.user_id} className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-                        {m.full_name || m.email?.split('@')[0] || '?'}
-                      </span>
-                    ))}
-                    {group.members.length > 3 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-                        +{group.members.length - 3}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={groups.map(g => g.id)}
+            strategy={rectSortingStrategy}
+          >
+            <div className="grid grid-cols-2 gap-3">
+              {groups.map((group) => (
+                <SortableGroupCard
+                  key={group.id}
+                  group={group}
+                  onEdit={openEdit}
+                  onDelete={handleDeleteGroup}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* Create/Edit Dialog */}
