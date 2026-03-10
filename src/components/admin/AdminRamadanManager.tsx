@@ -236,7 +236,7 @@ const AdminRamadanManager = ({ onBack }: AdminRamadanManagerProps) => {
         .from('ramadan_day_videos')
         .select('*')
         .order('display_order');
-      if (error) throw error;
+      if (error || !data) return [] as DayVideo[];
       return data as DayVideo[];
     },
     refetchOnMount: 'always',
