@@ -268,14 +268,10 @@ const AdminGenericModuleManager = ({ moduleId, moduleTitle, onBack }: Props) => 
     setFormOpen(true);
   };
 
-  const getContentIcon = (type: string) => {
-    switch (type) {
-      case 'video': return <Video className="h-3.5 w-3.5" />;
-      case 'audio': return <Volume2 className="h-3.5 w-3.5" />;
-      case 'pdf': return <FileText className="h-3.5 w-3.5 text-red-500" />;
-      case 'image': return <ImageIcon className="h-3.5 w-3.5 text-blue-500" />;
-      default: return <File className="h-3.5 w-3.5" />;
-    }
+  const mapContentType = (type: string): ContentType => {
+    if (type === 'youtube') return 'youtube';
+    if (type === 'audio') return 'audio';
+    return 'fichier';
   };
 
   return (
