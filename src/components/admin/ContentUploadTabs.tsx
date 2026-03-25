@@ -77,7 +77,7 @@ const ContentUploadTabs = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.doc,.docx"
+          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.bmp,.svg,.mp4,.mov,.avi,.pptx,.ppt,.xlsx,.xls,.txt,.zip,.rar"
           onChange={handleFileSelect}
           className="hidden"
         />
@@ -90,7 +90,7 @@ const ContentUploadTabs = ({
           {isUploading ? (
             <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Téléversement...</>
           ) : (
-            <><Upload className="h-4 w-4 mr-2" />Ajouter un fichier (PDF, DOC)</>
+            <><Upload className="h-4 w-4 mr-2" />Ajouter un fichier (PDF, DOC, Image, Vidéo...)</>
           )}
         </Button>
       </TabsContent>
