@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Trash2, Check } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
-export type ContentType = 'fichier' | 'youtube' | 'audio';
+export type ContentType = 'fichier' | 'youtube' | 'audio' | 'video' | 'image' | 'pdf' | 'document';
 
 interface ContentItemCardProps {
   id: string;
@@ -23,8 +23,12 @@ interface ContentItemCardProps {
 const getIcon = (type: ContentType) => {
   switch (type) {
     case 'fichier': return '📄';
+    case 'pdf': return '📄';
+    case 'document': return '📄';
     case 'youtube': return '🎬';
+    case 'video': return '🎬';
     case 'audio': return '🎵';
+    case 'image': return '🖼️';
   }
 };
 
@@ -49,7 +53,7 @@ const ContentItemCard = ({
   };
 
   const handleClick = () => {
-    if (contentType === 'fichier') {
+    if (contentType === 'fichier' || contentType === 'pdf' || contentType === 'document') {
       window.open(url, '_blank', 'noopener,noreferrer');
     } else {
       setPreviewOpen(true);
@@ -108,7 +112,7 @@ const ContentItemCard = ({
         <DialogContent className="max-w-lg">
           <div className="space-y-3">
             <p className="font-semibold text-sm">{title}</p>
-            {contentType === 'youtube' && (
+            {(contentType === 'youtube') && (
               <div className="aspect-video rounded-xl overflow-hidden bg-black">
                 <iframe
                   src={url}
@@ -118,6 +122,14 @@ const ContentItemCard = ({
                   style={{ border: 'none' }}
                 />
               </div>
+            )}
+            {contentType === 'video' && (
+              <div className="aspect-video rounded-xl overflow-hidden bg-black">
+                <video src={url} controls className="w-full h-full" />
+              </div>
+            )}
+            {contentType === 'image' && (
+              <img src={url} alt={title} className="w-full h-auto rounded-xl" />
             )}
             {contentType === 'audio' && (
               <audio src={url} controls className="w-full" />

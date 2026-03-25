@@ -141,6 +141,10 @@ const AdminNouraniaContent = () => {
   const mapContentType = (type: string): ContentType => {
     if (type === 'youtube') return 'youtube';
     if (type === 'audio') return 'audio';
+    if (type === 'video') return 'video';
+    if (type === 'image') return 'image';
+    if (type === 'pdf') return 'pdf';
+    if (type === 'document') return 'document';
     return 'fichier';
   };
 
