@@ -33,9 +33,10 @@ const AdminNouraniaContent = () => {
   });
 
   const getContentTypeFromFile = (file: File): string => {
-    if (file.type.startsWith('audio/')) return 'audio';
-    if (file.type === 'application/pdf') return 'fichier';
-    return 'fichier';
+    if (file.type.startsWith('video/')) return 'video';
+    if (file.type.startsWith('image/')) return 'image';
+    if (file.type === 'application/pdf') return 'pdf';
+    return 'document';
   };
 
   const getDefaultTitle = (contentType: string, fileName: string): string => {
