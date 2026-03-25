@@ -1,0 +1,2 @@
+ALTER TABLE public.nourania_lesson_content DROP CONSTRAINT nourania_lesson_content_content_type_check;
+ALTER TABLE public.nourania_lesson_content ADD CONSTRAINT nourania_lesson_content_content_type_check CHECK (content_type = ANY (ARRAY['video','pdf','image','document','audio','youtube']));
