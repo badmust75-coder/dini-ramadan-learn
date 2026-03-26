@@ -118,6 +118,8 @@ const Admin = () => {
   const [genericModuleManage, setGenericModuleManage] = useState<GenericModuleManageState | null>(null);
   const [deleteModuleOpen, setDeleteModuleOpen] = useState(false);
   const [moduleToDelete, setModuleToDelete] = useState<string | null>(null);
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [noteDialogModule, setNoteDialogModule] = useState<string | undefined>(undefined);
 
   // Fetch pending validation count
   const { data: pendingValidations } = useQuery({
