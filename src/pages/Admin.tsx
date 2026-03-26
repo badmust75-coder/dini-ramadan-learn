@@ -36,7 +36,7 @@ import {
   BookMarked, Hand, Settings, Mail, ClipboardCheck, UserCheck,
   Plus, GripVertical, Trash2,
   FileText, List, Video, Star, Heart, Bell, Calendar, Image, Music,
-  ClipboardList, LayoutGrid, Book, Scroll, Eye, Wrench
+  ClipboardList, LayoutGrid, Book, Scroll, Eye, Wrench, StickyNote, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -508,6 +508,64 @@ const Admin = () => {
             );
           })}
         </div>
+
+        {/* Quick Note Card with dropdown */}
+        {(() => {
+          const quickNavItems = [
+            { label: 'Ramadan', icon: Moon, view: 'ramadan' as ViewType, color: 'text-emerald-600' },
+            { label: 'Élèves', icon: GraduationCap, view: 'students' as ViewType, color: 'text-amber-600' },
+            { label: 'Prière', icon: Hand, view: 'prayer' as ViewType, color: 'text-rose-600' },
+            { label: 'Cahier de texte', icon: ClipboardList, view: 'homework' as ViewType, color: 'text-lime-600' },
+            { label: 'Nourania', icon: Sparkles, view: 'nourania' as ViewType, color: 'text-sky-600' },
+            { label: 'Messages', icon: Mail, view: 'messages' as ViewType, color: 'text-pink-600' },
+            { label: 'Registre de présence', icon: ClipboardCheck, view: 'attendance' as ViewType, color: 'text-cyan-600' },
+            { label: 'Utilisateurs', icon: Users, view: 'users' as ViewType, color: 'text-purple-600' },
+            { label: 'Sourates', icon: BookMarked, view: 'sourates' as ViewType, color: 'text-indigo-600' },
+            { label: 'Alphabet', icon: BookOpen, view: 'alphabet' as ViewType, color: 'text-orange-600' },
+            { label: 'Invocations', icon: MessageSquare, view: 'invocations' as ViewType, color: 'text-teal-600' },
+            { label: 'Grammaire', icon: BookOpen, view: 'grammaire-manage' as ViewType, color: 'text-blue-600' },
+            { label: '99 Noms d\'Allah', icon: Star, view: 'allah-names-manage' as ViewType, color: 'text-amber-600' },
+            { label: 'Vocabulaire', icon: BookOpen, view: 'vocabulaire-manage' as ViewType, color: 'text-emerald-600' },
+            { label: 'Lecture du Coran', icon: BookMarked, view: 'lecture-coran-manage' as ViewType, color: 'text-teal-600' },
+            { label: 'Darija', icon: MessageSquare, view: 'darija-manage' as ViewType, color: 'text-orange-600' },
+            { label: 'Dictionnaire', icon: List, view: 'dictionnaire-manage' as ViewType, color: 'text-indigo-600' },
+            { label: 'Dhikr', icon: Heart, view: 'dhikr-manage' as ViewType, color: 'text-rose-600' },
+            { label: 'Hadiths', icon: Scroll, view: 'hadiths-manage' as ViewType, color: 'text-yellow-600' },
+            { label: 'Histoires des Prophètes', icon: Users, view: 'histoires-prophetes-manage' as ViewType, color: 'text-violet-600' },
+            { label: 'Statistiques globales', icon: LayoutGrid, view: 'global-stats' as ViewType, color: 'text-blue-600' },
+          ];
+          return (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="w-full rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50/80 dark:bg-amber-950/30 p-3 shadow-card hover:shadow-md transition-all flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                    <StickyNote className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="font-bold text-sm text-foreground">📝 Note rapide</p>
+                    <p className="text-xs text-muted-foreground">Accès rapide aux modules</p>
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-1.5 max-h-80 overflow-y-auto" align="center" sideOffset={6}>
+                {quickNavItems.map((nav) => {
+                  const NavIcon = nav.icon;
+                  return (
+                    <button
+                      key={nav.view}
+                      className="flex items-center gap-2.5 w-full rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
+                      onClick={() => setCurrentView(nav.view)}
+                    >
+                      <NavIcon className={`h-4 w-4 ${nav.color}`} />
+                      {nav.label}
+                    </button>
+                  );
+                })}
+              </PopoverContent>
+            </Popover>
+          );
+        })()}
 
         <h2 className="text-xl font-bold text-foreground mb-2">Modules natifs</h2>
         <p className="text-sm text-muted-foreground mb-4">Cliquer sur une carte pour y accéder</p>
