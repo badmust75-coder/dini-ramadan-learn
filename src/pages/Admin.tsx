@@ -436,8 +436,8 @@ const Admin = () => {
   };
 
   // Sub-view rendering
-  if (currentView === 'users') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminUsersList onBack={handleBack} /></div></AppLayout>;
-  if (currentView === 'students') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminStudentDetails onBack={handleBack} /></div></AppLayout>;
+  if (currentView === 'users') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminNotesList moduleKey="users" /><AdminUsersList onBack={handleBack} /></div></AppLayout>;
+  if (currentView === 'students') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminNotesList moduleKey="students" /><AdminStudentDetails onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'ramadan-manage') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminRamadanManager onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'ramadan-quiz-tracking') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminRamadanQuizTracking onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'nourania-manage') return <AppLayout title="Tableau de bord"><div className="p-4"><Button variant="ghost" onClick={handleBack} className="mb-4">← Retour</Button><AdminNouraniaContent /></div></AppLayout>;
@@ -448,9 +448,9 @@ const Admin = () => {
   if (currentView === 'nourania-validations') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminNouraniaValidations onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'invocations-validations') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminInvocationValidations onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'registration-validations') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminRegistrationValidations onBack={handleBack} /></div></AppLayout>;
-  if (currentView === 'messages') return <AppLayout title="Tableau de bord"><div className="p-4"><Button variant="ghost" onClick={handleBack} className="mb-4">← Retour</Button><AdminMessaging /></div></AppLayout>;
-  if (currentView === 'homework') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminHomework onBack={handleBack} /></div></AppLayout>;
-  if (currentView === 'attendance') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminAttendance onBack={handleBack} /></div></AppLayout>;
+  if (currentView === 'messages') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminNotesList moduleKey="messages" /><Button variant="ghost" onClick={handleBack} className="mb-4">← Retour</Button><AdminMessaging /></div></AppLayout>;
+  if (currentView === 'homework') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminNotesList moduleKey="homework" /><AdminHomework onBack={handleBack} /></div></AppLayout>;
+  if (currentView === 'attendance') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminNotesList moduleKey="attendance" /><AdminAttendance onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'global-stats') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminGlobalStats onBack={handleBack} /></div></AppLayout>;
   
   if (currentView === 'dynamic-card-content' && selectedDynamicCard) return <AppLayout title="Tableau de bord"><div className="p-4"><AdminDynamicCardContent card={selectedDynamicCard} onBack={handleBack} /></div></AppLayout>;
