@@ -13,6 +13,7 @@ interface AdminModuleCardProps {
   onClick: () => void;
   isActive?: boolean;
   actionButton?: React.ReactNode;
+  noteBadge?: number;
 }
 
 const AdminModuleCard = ({
@@ -26,6 +27,7 @@ const AdminModuleCard = ({
   onClick,
   isActive = false,
 }: AdminModuleCardProps) => {
+  const noteCount = (arguments[0] as AdminModuleCardProps).noteBadge;
   return (
     <div
       className={cn(
