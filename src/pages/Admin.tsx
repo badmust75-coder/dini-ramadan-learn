@@ -724,6 +724,12 @@ const Admin = () => {
           title="Supprimer le module"
           description="Voulez-vous vraiment supprimer ce module pédagogique et toutes ses cartes ? Cette action est irréversible."
         />
+
+        <AdminNoteDialog
+          open={noteDialogOpen}
+          onOpenChange={setNoteDialogOpen}
+          defaultModule={noteDialogModule}
+        />
       </div>
     </AppLayout>
   );
