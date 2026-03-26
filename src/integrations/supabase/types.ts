@@ -62,6 +62,45 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_notes: {
+        Row: {
+          attachment_name: string | null
+          attachment_type: string | null
+          attachment_url: string | null
+          content: string | null
+          created_at: string
+          created_by: string
+          id: string
+          is_public: boolean
+          module_key: string
+          updated_at: string
+        }
+        Insert: {
+          attachment_name?: string | null
+          attachment_type?: string | null
+          attachment_url?: string | null
+          content?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          is_public?: boolean
+          module_key: string
+          updated_at?: string
+        }
+        Update: {
+          attachment_name?: string | null
+          attachment_type?: string | null
+          attachment_url?: string | null
+          content?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_public?: boolean
+          module_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       allah_names: {
         Row: {
           created_at: string

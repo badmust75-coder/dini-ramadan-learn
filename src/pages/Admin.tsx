@@ -27,7 +27,8 @@ import AdminRamadanQuizTracking from '@/components/admin/AdminRamadanQuizTrackin
 import AdminHomework from '@/components/admin/AdminHomework';
 import AdminAttendance from '@/components/admin/AdminAttendance';
 import AdminGlobalStats from '@/components/admin/AdminGlobalStats';
-
+import AdminNoteDialog from '@/components/admin/AdminNoteDialog';
+import AdminNotesList from '@/components/admin/AdminNotesList';
 
 import ConfirmDeleteDialog from '@/components/ui/confirm-delete-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -117,6 +118,8 @@ const Admin = () => {
   const [genericModuleManage, setGenericModuleManage] = useState<GenericModuleManageState | null>(null);
   const [deleteModuleOpen, setDeleteModuleOpen] = useState(false);
   const [moduleToDelete, setModuleToDelete] = useState<string | null>(null);
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [noteDialogModule, setNoteDialogModule] = useState<string | undefined>(undefined);
 
   // Fetch pending validation count
   const { data: pendingValidations } = useQuery({
@@ -206,6 +209,22 @@ const Admin = () => {
         .order('display_order');
       if (error) throw error;
       return data || [];
+    },
+  });
+
+  // Fetch note counts per module
+  const { data: noteCounts } = useQuery({
+    queryKey: ['admin-notes-counts'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('admin_notes')
+        .select('module_key');
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data || []).forEach((n: any) => {
+        counts[n.module_key] = (counts[n.module_key] || 0) + 1;
+      });
+      return counts;
     },
   });
 
@@ -417,8 +436,8 @@ const Admin = () => {
   };
 
   // Sub-view rendering
-  if (currentView === 'users') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminUsersList onBack={handleBack} /></div></AppLayout>;
-  if (currentView === 'students') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminStudentDetails onBack={handleBack} /></div></AppLayout>;
+  if (currentView === 'users') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminNotesList moduleKey="users" /><AdminUsersList onBack={handleBack} /></div></AppLayout>;
+  if (currentView === 'students') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminNotesList moduleKey="students" /><AdminStudentDetails onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'ramadan-manage') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminRamadanManager onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'ramadan-quiz-tracking') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminRamadanQuizTracking onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'nourania-manage') return <AppLayout title="Tableau de bord"><div className="p-4"><Button variant="ghost" onClick={handleBack} className="mb-4">← Retour</Button><AdminNouraniaContent /></div></AppLayout>;
@@ -429,9 +448,9 @@ const Admin = () => {
   if (currentView === 'nourania-validations') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminNouraniaValidations onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'invocations-validations') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminInvocationValidations onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'registration-validations') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminRegistrationValidations onBack={handleBack} /></div></AppLayout>;
-  if (currentView === 'messages') return <AppLayout title="Tableau de bord"><div className="p-4"><Button variant="ghost" onClick={handleBack} className="mb-4">← Retour</Button><AdminMessaging /></div></AppLayout>;
-  if (currentView === 'homework') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminHomework onBack={handleBack} /></div></AppLayout>;
-  if (currentView === 'attendance') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminAttendance onBack={handleBack} /></div></AppLayout>;
+  if (currentView === 'messages') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminNotesList moduleKey="messages" /><Button variant="ghost" onClick={handleBack} className="mb-4">← Retour</Button><AdminMessaging /></div></AppLayout>;
+  if (currentView === 'homework') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminNotesList moduleKey="homework" /><AdminHomework onBack={handleBack} /></div></AppLayout>;
+  if (currentView === 'attendance') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminNotesList moduleKey="attendance" /><AdminAttendance onBack={handleBack} /></div></AppLayout>;
   if (currentView === 'global-stats') return <AppLayout title="Tableau de bord"><div className="p-4"><AdminGlobalStats onBack={handleBack} /></div></AppLayout>;
   
   if (currentView === 'dynamic-card-content' && selectedDynamicCard) return <AppLayout title="Tableau de bord"><div className="p-4"><AdminDynamicCardContent card={selectedDynamicCard} onBack={handleBack} /></div></AppLayout>;
@@ -461,6 +480,7 @@ const Admin = () => {
     return (
       <AppLayout title="Tableau de bord">
         <div className="p-4">
+          <AdminNotesList moduleKey={currentView} />
           <AdminModuleProgress 
             module={currentView as 'ramadan' | 'nourania' | 'alphabet' | 'invocations' | 'sourates' | 'prayer'} 
             onBack={handleBack} 
@@ -509,56 +529,71 @@ const Admin = () => {
           })}
         </div>
 
-        {/* Quick Note Card with dropdown */}
+        {/* Quick Note Card - opens dialog */}
         {(() => {
-          const quickNavItems = [
-            { label: 'Ramadan', icon: Moon, view: 'ramadan' as ViewType, color: 'text-emerald-600' },
-            { label: 'Élèves', icon: GraduationCap, view: 'students' as ViewType, color: 'text-amber-600' },
-            { label: 'Prière', icon: Hand, view: 'prayer' as ViewType, color: 'text-rose-600' },
-            { label: 'Cahier de texte', icon: ClipboardList, view: 'homework' as ViewType, color: 'text-lime-600' },
-            { label: 'Nourania', icon: Sparkles, view: 'nourania' as ViewType, color: 'text-sky-600' },
-            { label: 'Messages', icon: Mail, view: 'messages' as ViewType, color: 'text-pink-600' },
-            { label: 'Registre de présence', icon: ClipboardCheck, view: 'attendance' as ViewType, color: 'text-cyan-600' },
-            { label: 'Utilisateurs', icon: Users, view: 'users' as ViewType, color: 'text-purple-600' },
-            { label: 'Sourates', icon: BookMarked, view: 'sourates' as ViewType, color: 'text-indigo-600' },
-            { label: 'Alphabet', icon: BookOpen, view: 'alphabet' as ViewType, color: 'text-orange-600' },
-            { label: 'Invocations', icon: MessageSquare, view: 'invocations' as ViewType, color: 'text-teal-600' },
-            { label: 'Grammaire', icon: BookOpen, view: 'grammaire-manage' as ViewType, color: 'text-blue-600' },
-            { label: '99 Noms d\'Allah', icon: Star, view: 'allah-names-manage' as ViewType, color: 'text-amber-600' },
-            { label: 'Vocabulaire', icon: BookOpen, view: 'vocabulaire-manage' as ViewType, color: 'text-emerald-600' },
-            { label: 'Lecture du Coran', icon: BookMarked, view: 'lecture-coran-manage' as ViewType, color: 'text-teal-600' },
-            { label: 'Darija', icon: MessageSquare, view: 'darija-manage' as ViewType, color: 'text-orange-600' },
-            { label: 'Dictionnaire', icon: List, view: 'dictionnaire-manage' as ViewType, color: 'text-indigo-600' },
-            { label: 'Dhikr', icon: Heart, view: 'dhikr-manage' as ViewType, color: 'text-rose-600' },
-            { label: 'Hadiths', icon: Scroll, view: 'hadiths-manage' as ViewType, color: 'text-yellow-600' },
-            { label: 'Histoires des Prophètes', icon: Users, view: 'histoires-prophetes-manage' as ViewType, color: 'text-violet-600' },
-            { label: 'Statistiques globales', icon: LayoutGrid, view: 'global-stats' as ViewType, color: 'text-blue-600' },
+          const quickNoteModules = [
+            { key: 'ramadan', label: 'Ramadan', icon: Moon, color: 'text-emerald-600' },
+            { key: 'students', label: 'Élèves', icon: GraduationCap, color: 'text-amber-600' },
+            { key: 'prayer', label: 'Prière', icon: Hand, color: 'text-rose-600' },
+            { key: 'homework', label: 'Cahier de texte', icon: ClipboardList, color: 'text-lime-600' },
+            { key: 'nourania', label: 'Nourania', icon: Sparkles, color: 'text-sky-600' },
+            { key: 'messages', label: 'Messages', icon: Mail, color: 'text-pink-600' },
+            { key: 'attendance', label: 'Registre de présence', icon: ClipboardCheck, color: 'text-cyan-600' },
+            { key: 'users', label: 'Utilisateurs', icon: Users, color: 'text-purple-600' },
+            { key: 'sourates', label: 'Sourates', icon: BookMarked, color: 'text-indigo-600' },
+            { key: 'alphabet', label: 'Alphabet', icon: BookOpen, color: 'text-orange-600' },
+            { key: 'invocations', label: 'Invocations', icon: MessageSquare, color: 'text-teal-600' },
+            { key: 'grammaire', label: 'Grammaire', icon: BookOpen, color: 'text-blue-600' },
+            { key: 'allah-names', label: '99 Noms d\'Allah', icon: Star, color: 'text-amber-600' },
+            { key: 'vocabulaire', label: 'Vocabulaire', icon: BookOpen, color: 'text-emerald-600' },
+            { key: 'lecture-coran', label: 'Lecture du Coran', icon: BookMarked, color: 'text-teal-600' },
+            { key: 'darija', label: 'Darija', icon: MessageSquare, color: 'text-orange-600' },
+            { key: 'dictionnaire', label: 'Dictionnaire', icon: List, color: 'text-indigo-600' },
+            { key: 'dhikr', label: 'Dhikr', icon: Heart, color: 'text-rose-600' },
+            { key: 'hadiths', label: 'Hadiths', icon: Scroll, color: 'text-yellow-600' },
+            { key: 'histoires-prophetes', label: 'Histoires des Prophètes', icon: Users, color: 'text-violet-600' },
           ];
+          const totalNotes = Object.values(noteCounts || {}).reduce((a: number, b: number) => a + b, 0);
           return (
             <Popover>
               <PopoverTrigger asChild>
                 <button className="w-full rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50/80 dark:bg-amber-950/30 p-3 shadow-card hover:shadow-md transition-all flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0 relative">
                     <StickyNote className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    {totalNotes > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{totalNotes}</span>
+                    )}
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="font-bold text-sm text-foreground">📝 Note rapide</p>
-                    <p className="text-xs text-muted-foreground">Accès rapide aux modules</p>
+                    <p className="font-bold text-sm text-foreground">📝 Notes rapides</p>
+                    <p className="text-xs text-muted-foreground">{totalNotes > 0 ? `${totalNotes} note(s) enregistrée(s)` : 'Ajouter une note à un module'}</p>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-64 p-1.5 max-h-80 overflow-y-auto" align="center" sideOffset={6}>
-                {quickNavItems.map((nav) => {
-                  const NavIcon = nav.icon;
+              <PopoverContent className="w-72 p-1.5 max-h-96 overflow-y-auto" align="center" sideOffset={6}>
+                <button
+                  className="flex items-center gap-2.5 w-full rounded-md px-3 py-2.5 text-sm font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-left mb-1"
+                  onClick={() => { setNoteDialogModule(undefined); setNoteDialogOpen(true); }}
+                >
+                  <Plus className="h-4 w-4" />
+                  ➕ Créer une note
+                </button>
+                <div className="h-px bg-border my-1" />
+                {quickNoteModules.map((mod) => {
+                  const NavIcon = mod.icon;
+                  const count = noteCounts?.[mod.key] || 0;
                   return (
                     <button
-                      key={nav.view}
+                      key={mod.key}
                       className="flex items-center gap-2.5 w-full rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
-                      onClick={() => setCurrentView(nav.view)}
+                      onClick={() => { setNoteDialogModule(mod.key); setNoteDialogOpen(true); }}
                     >
-                      <NavIcon className={`h-4 w-4 ${nav.color}`} />
-                      {nav.label}
+                      <NavIcon className={`h-4 w-4 ${mod.color}`} />
+                      <span className="flex-1">{mod.label}</span>
+                      {count > 0 && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{count}</Badge>
+                      )}
                     </button>
                   );
                 })}
@@ -595,6 +630,7 @@ const Admin = () => {
                                 bgColor={card.bgColor}
                                 cardBgColor={card.cardBgColor}
                                 onClick={() => {}}
+                                noteBadge={noteCounts?.[card.key] || 0}
                               />
                             </div>
                           </PopoverTrigger>
@@ -630,6 +666,7 @@ const Admin = () => {
                         bgColor={card.bgColor}
                         cardBgColor={card.cardBgColor}
                         onClick={() => setCurrentView(card.view)}
+                        noteBadge={noteCounts?.[card.key] || 0}
                       />
                     </SortableCard>
                   );
@@ -689,6 +726,12 @@ const Admin = () => {
           onConfirm={() => moduleToDelete && deleteModuleMutation.mutate(moduleToDelete)}
           title="Supprimer le module"
           description="Voulez-vous vraiment supprimer ce module pédagogique et toutes ses cartes ? Cette action est irréversible."
+        />
+
+        <AdminNoteDialog
+          open={noteDialogOpen}
+          onOpenChange={setNoteDialogOpen}
+          defaultModule={noteDialogModule}
         />
       </div>
     </AppLayout>
