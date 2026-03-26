@@ -629,6 +629,7 @@ const Admin = () => {
                                 bgColor={card.bgColor}
                                 cardBgColor={card.cardBgColor}
                                 onClick={() => {}}
+                                noteBadge={noteCounts?.[card.key] || 0}
                               />
                             </div>
                           </PopoverTrigger>
@@ -664,6 +665,7 @@ const Admin = () => {
                         bgColor={card.bgColor}
                         cardBgColor={card.cardBgColor}
                         onClick={() => setCurrentView(card.view)}
+                        noteBadge={noteCounts?.[card.key] || 0}
                       />
                     </SortableCard>
                   );
