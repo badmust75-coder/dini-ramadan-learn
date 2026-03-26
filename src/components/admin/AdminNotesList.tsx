@@ -75,9 +75,9 @@ const AdminNotesList = ({ moduleKey, showDelete = true }: AdminNotesListProps) =
             </div>
             <div className="flex items-center gap-1 shrink-0">
               {note.is_public ? (
-                <Eye className="h-3.5 w-3.5 text-green-500" title="Visible par les élèves" />
+                <span title="Visible par les élèves"><Eye className="h-3.5 w-3.5 text-green-500" /></span>
               ) : (
-                <EyeOff className="h-3.5 w-3.5 text-muted-foreground" title="Admin uniquement" />
+                <span title="Admin uniquement"><EyeOff className="h-3.5 w-3.5 text-muted-foreground" /></span>
               )}
               {showDelete && (
                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteMutation.mutate(note.id)}>
