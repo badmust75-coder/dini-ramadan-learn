@@ -480,6 +480,7 @@ const Admin = () => {
     return (
       <AppLayout title="Tableau de bord">
         <div className="p-4">
+          <AdminNotesList moduleKey={currentView} />
           <AdminModuleProgress 
             module={currentView as 'ramadan' | 'nourania' | 'alphabet' | 'invocations' | 'sourates' | 'prayer'} 
             onBack={handleBack} 
