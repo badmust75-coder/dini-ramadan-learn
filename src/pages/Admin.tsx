@@ -212,6 +212,22 @@ const Admin = () => {
     },
   });
 
+  // Fetch note counts per module
+  const { data: noteCounts } = useQuery({
+    queryKey: ['admin-notes-counts'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('admin_notes')
+        .select('module_key');
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data || []).forEach((n: any) => {
+        counts[n.module_key] = (counts[n.module_key] || 0) + 1;
+      });
+      return counts;
+    },
+  });
+
   useEffect(() => { setPendingCount(pendingValidations || 0); }, [pendingValidations]);
   useEffect(() => { setPendingRegistrations(pendingRegCount || 0); }, [pendingRegCount]);
   useEffect(() => { setPendingNourania(pendingNouraniaCount || 0); }, [pendingNouraniaCount]);
