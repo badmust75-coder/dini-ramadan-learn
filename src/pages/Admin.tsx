@@ -27,7 +27,8 @@ import AdminRamadanQuizTracking from '@/components/admin/AdminRamadanQuizTrackin
 import AdminHomework from '@/components/admin/AdminHomework';
 import AdminAttendance from '@/components/admin/AdminAttendance';
 import AdminGlobalStats from '@/components/admin/AdminGlobalStats';
-
+import AdminNoteDialog from '@/components/admin/AdminNoteDialog';
+import AdminNotesList from '@/components/admin/AdminNotesList';
 
 import ConfirmDeleteDialog from '@/components/ui/confirm-delete-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
